@@ -1,53 +1,12 @@
 {
   "rules": [
     {
-      "name": "Send all to 33378975",
-      "conditions": {
-        "projectKey": "*"
-      },
-      "chatId": "33378975",
-      "template": "🎉 Создана задача {issue.key}\nТип: {issue.fields.issuetype.name}\nСсылка: {issue.url}"
-    },
-    {
-      "name": "Алерт 1",
-      "conditions": {
-        "projectKey": "PROJ1"
-      },
-      "chatId": "100001",
-      "template": "🚨 *{issue.key}*: {issue.fields.summary}\n\nСтатус: {issue.fields.status.name}\nТип: {issue.fields.issuetype.name}"
-    },
-    {
-      "name": "Алерт 2",
-      "conditions": {
-        "projectKey": "PROJ2"
-      },
-      "chatId": "100002",
-      "template": "⚙️ *{issue.key}* → {issue.fields.status.name}\n\n{issue.fields.summary}"
-    },
-    {
-      "name": "Алерт 3",
-      "conditions": {
-        "projectKey": "OPS"
-      },
-      "chatId": "100003",
-      "template": "🔧 *{issue.key}* {issue.fields.summary}\n\nАвтор: {user.displayName}\nСтатус: {issue.fields.status.name}"
-    },
-    {
-      "name": "FLEX Bug Created",
-      "conditions": {
-        "projectKey": "FLEX",
-        "issueType": "Bug"
-      },
-      "chatId": "100004",
-      "template": "🎉 Создана задача с типом {issue.fields.issuetype.name}\n\nТеги: {labels}\nНазвание: {issue.fields.summary}\n📎Link: {issue.url}"
-    },
-    {
       "name": "test_pachka",
       "conditions": {
         "automationName": "test_pachka"
       },
-      "chatId": "100005",
-      "template": "🎉 Создана задача с типом {issue.fields.issuetype.name}\n\nТеги: {labels}\nНазвание: {issue.fields.summary}\n📎Link: {issue.url}"
+      "chatId": "33378975",
+      "template": "🎯 Создана задача {issue.key}\nТип: {issue.fields.issuetype.name}\nLink: {issue.url}"
     }
   ],
   "defaultChatId": "33378975"
