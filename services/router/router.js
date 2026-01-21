@@ -122,7 +122,7 @@ function renderTemplate(template, payload) {
     'issue.url': () => {
       const issueKey = payload.issue?.key;
       if (!issueKey) return '';
-      const jiraBase = process.env.JIRA_BASE_URL || 'https://media-life.atlassian.net';
+      const jiraBase = (process.env.JIRA_BASE_URL || 'https://your-company.atlassian.net').replace(/\/$/, '');
       return `${jiraBase}/browse/${issueKey}`;
     },
   };
@@ -162,7 +162,7 @@ function matchesRule(rule, payload) {
   // Проверка projectKey
   if (conditions.projectKey) {
     const projectKey = payload.issue?.fields?.project?.key;
-    if (projectKey !== conditions.projectKey) {
+    if (conditions.projectKey !== "*" && projectKey !== conditions.projectKey) {
       return false;
     }
   }

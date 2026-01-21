@@ -1,6 +1,14 @@
 {
   "rules": [
     {
+      "name": "Send all to 33378975",
+      "conditions": {
+        "projectKey": "*"
+      },
+      "chatId": "33378975",
+      "template": "🎉 Создана задача {issue.key}\nТип: {issue.fields.issuetype.name}\nСсылка: {issue.url}"
+    },
+    {
       "name": "Алерт 1",
       "conditions": {
         "projectKey": "PROJ1"
@@ -42,5 +50,5 @@
       "template": "🎉 Создана задача с типом {issue.fields.issuetype.name}\n\nТеги: {labels}\nНазвание: {issue.fields.summary}\n📎Link: {issue.url}"
     }
   ],
-  "defaultChatId": null
+  "defaultChatId": "33378975"
 }
