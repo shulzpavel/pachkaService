@@ -1,0 +1,10 @@
+{
+  "name": "jira-pachka-shared",
+  "version": "1.0.0",
+  "description": "Shared modules for Jira-Pachka Router",
+  "type": "module",
+  "dependencies": {
+    "winston": "^3.11.0",
+    "node-fetch": "^3.3.2"
+  }
+}

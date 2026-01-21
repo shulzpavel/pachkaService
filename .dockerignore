@@ -1,0 +1,55 @@
+# Dependencies (will be installed in container)
+node_modules/
+**/node_modules/
+
+# Tests
+tests/
+**/*.test.js
+**/*.spec.js
+**/__tests__/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Environment files (use env vars or volumes)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+.cache/
+.tmp/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Editors/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Misc
+*.pid
+coverage/
+.nyc_output/

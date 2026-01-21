@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: jira-pachka-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_PORT=3000
+      - ROUTER_SERVICE_URL=http://router:3001
+      - NOTIFIER_SERVICE_URL=http://notifier:3002
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SERVICE_NAME=gateway
+      - JIRA_WEBHOOK_SECRET=${JIRA_WEBHOOK_SECRET:-}
+      - JIRA_ALLOWED_IPS=${JIRA_ALLOWED_IPS:-}
+      - INTERNAL_ALLOWED_IPS=${INTERNAL_ALLOWED_IPS:-}
+      - JIRA_BASE_URL=${JIRA_BASE_URL:-https://your-company.atlassian.net}
+    env_file:
+      - .env
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  router:
+    build:
+      context: .
+      dockerfile: services/router/Dockerfile
+    container_name: jira-pachka-router
+    # Порт не публикуется наружу - только внутренняя сеть
+    expose:
+      - "3001"
+    environment:
+      - NODE_ENV=production
+      - ROUTER_PORT=3001
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SERVICE_NAME=router
+      - INTERNAL_ALLOWED_IPS=${INTERNAL_ALLOWED_IPS:-}
+      - JIRA_BASE_URL=${JIRA_BASE_URL:-https://your-company.atlassian.net}
+    volumes:
+      - ./routes.json:/app/routes.json:ro
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  notifier:
+    build:
+      context: .
+      dockerfile: services/notifier/Dockerfile
+    container_name: jira-pachka-notifier
+    # Порт не публикуется наружу - только внутренняя сеть
+    expose:
+      - "3002"
+    environment:
+      - NODE_ENV=production
+      - NOTIFIER_PORT=3002
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SERVICE_NAME=notifier
+      - PACHKA_API_BASE=${PACHKA_API_BASE:-https://api.pachca.com/api/shared/v1}
+    env_file:
+      - .env
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  jira-pachka-network:
+    driver: bridge

@@ -1,0 +1,30 @@
+{
+  "name": "jira-pachka-router",
+  "version": "2.0.0",
+  "description": "Jira to Pachka webhook router - микросервисная архитектура",
+  "type": "module",
+  "scripts": {
+    "start:gateway": "cd services/gateway && npm start",
+    "start:router": "cd services/router && npm start",
+    "start:notifier": "cd services/notifier && npm start",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=unit",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --testPathPattern=integration",
+    "test:load": "node tests/load/runner.js",
+    "test:stress": "node tests/load/stress.js",
+    "test:endurance": "node tests/load/endurance.js",
+    "test:benchmark": "node tests/load/benchmark.js",
+    "test:load:all": "bash tests/load/run-all.sh",
+    "test:all": "npm run test:unit && npm run test:integration",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
+  },
+  "keywords": ["jira", "pachka", "webhook", "router", "microservices"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "autocannon": "^7.12.0"
+  }
+}
