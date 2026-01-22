@@ -150,10 +150,14 @@ function renderTemplate(template, payload) {
   // Заменяем все плейсхолдеры вида {path}
   result = result.replace(/\{([^}]+)\}/g, (match, path) => {
     const key = path.trim();
+    const lowerKey = key.toLowerCase();
 
     // Проверяем специальные функции
     if (specialFunctions[key]) {
       return specialFunctions[key]();
+    }
+    if (specialFunctions[lowerKey]) {
+      return specialFunctions[lowerKey]();
     }
     
     // Обычное извлечение значения
