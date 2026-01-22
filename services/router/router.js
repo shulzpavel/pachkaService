@@ -99,6 +99,12 @@ function loadRoutes(forceReload = false) {
  * @returns {string}
  */
 function renderTemplate(template, payload) {
+  // Хардкод-словарь для преобразования исполнителя в упоминание в Пачке
+  const assigneeMentions = {
+    // "Имя Фамилия": "@mention"
+    "Sample User": "@sample",
+  };
+
   let result = template;
 
   // Рекурсивно извлекаем значения по пути (например, "issue.fields.summary")
@@ -124,6 +130,20 @@ function renderTemplate(template, payload) {
       if (!issueKey) return '';
       const jiraBase = (process.env.JIRA_BASE_URL || 'https://your-company.atlassian.net').replace(/\/$/, '');
       return `${jiraBase}/browse/${issueKey}`;
+    },
+    // Преобразование исполнителя в упоминание по хардкод-таблице
+    'assignee.mention': () => {
+      const assigneeName = payload.issue?.fields?.assignee?.displayName;
+      return assigneeName && assigneeMentions[assigneeName]
+        ? assigneeMentions[assigneeName]
+        : assigneeName || 'Не указан';
+    },
+    // Эмодзи по типу задачи
+    'issue.emoji': () => {
+      const type = payload.issue?.fields?.issuetype?.name || '';
+      if (type.toLowerCase() === 'bug') return '🟥';
+      if (type.toLowerCase() === 'story') return '🟩';
+      return '🟦';
     },
   };
 
