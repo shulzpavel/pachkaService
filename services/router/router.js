@@ -154,19 +154,16 @@ function renderTemplate(template, payload) {
     },
   };
 
-  // Заменяем все плейсхолдеры вида {path}
+  // Сначала подставляем специальные плейсхолдеры (без зависимости от регистра)
+  for (const [placeholder, fn] of Object.entries(specialFunctions)) {
+    const value = fn();
+    const regex = new RegExp(`\\{\\s*${placeholder}\\s*\\}`, "gi");
+    result = result.replace(regex, value);
+  }
+
+  // Затем подставляем обычные значения вида {path}
   result = result.replace(/\{([^}]+)\}/g, (match, path) => {
     const key = path.trim();
-    const lowerKey = key.toLowerCase();
-
-    // Проверяем специальные функции
-    if (specialFunctions[key]) {
-      return specialFunctions[key]();
-    }
-    if (specialFunctions[lowerKey]) {
-      return specialFunctions[lowerKey]();
-    }
-    
     // Обычное извлечение значения
     const value = getValue(payload, key);
     return value !== undefined && value !== null ? String(value) : match;
