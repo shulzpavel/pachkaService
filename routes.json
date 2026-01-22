@@ -6,7 +6,7 @@
         "automationName": "test_pachka"
       },
       "chatId": "33378975",
-      "template": "{issue_emoji} Создана задача с типом {issue.fields.issuetype.name}\nНазвание: {issue.fields.summary}\n{priority_emoji} Приоритет: {issue.fields.priority.name}\nМетки: {labels}\nLink: {issue.url}"
+      "template": "{issue_emoji} Создана задача с типом {issue.fields.issuetype.name}\nНазвание: {issue.fields.summary}\n{priority_emoji} Приоритет: {priority_name}\nМетки: {labels}\nLink: {issue.url}"
     }
   ],
   "defaultChatId": "33378975"

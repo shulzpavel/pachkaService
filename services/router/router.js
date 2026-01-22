@@ -161,6 +161,9 @@ function renderTemplate(template, payload) {
       const jiraBase = (process.env.JIRA_BASE_URL || 'https://your-company.atlassian.net').replace(/\/$/, '');
       return `${jiraBase}/browse/${issueKey}`;
     },
+    // Приоритет (название)
+    'priority.name': () => payload.issue?.fields?.priority?.name || "Не указан",
+    'priority_name': () => payload.issue?.fields?.priority?.name || "Не указан",
     // Преобразование исполнителя в упоминание по хардкод-таблице
     'assignee.mention': () => {
       const assigneeName = payload.issue?.fields?.assignee?.displayName;
@@ -202,7 +205,7 @@ function renderTemplate(template, payload) {
     const key = path.trim();
     // Обычное извлечение значения
     const value = getValue(payload, key);
-    return value !== undefined && value !== null ? String(value) : match;
+    return value !== undefined && value !== null ? String(value) : "";
   });
 
   return result;
