@@ -149,13 +149,15 @@ function renderTemplate(template, payload) {
 
   // Заменяем все плейсхолдеры вида {path}
   result = result.replace(/\{([^}]+)\}/g, (match, path) => {
+    const key = path.trim();
+
     // Проверяем специальные функции
-    if (specialFunctions[path]) {
-      return specialFunctions[path]();
+    if (specialFunctions[key]) {
+      return specialFunctions[key]();
     }
     
     // Обычное извлечение значения
-    const value = getValue(payload, path);
+    const value = getValue(payload, key);
     return value !== undefined && value !== null ? String(value) : match;
   });
 
