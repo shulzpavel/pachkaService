@@ -252,6 +252,11 @@ export function routeMessage(payload) {
 
   for (const rule of rules) {
     if (matchesRule(rule, payload)) {
+      logger.info("Payload labels debug", {
+        labels: payload.issue?.fields?.labels,
+        summary: payload.issue?.fields?.summary,
+        issueKey: payload.issue?.key,
+      });
       const content = renderTemplate(rule.template, payload);
       logger.info(`Route matched: ${rule.name}`, {
         ruleName: rule.name,
