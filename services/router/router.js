@@ -145,6 +145,13 @@ function renderTemplate(template, payload) {
       if (type.toLowerCase() === 'story') return '🟩';
       return '🟦';
     },
+    // Алиас для удобства
+    'issue_emoji': () => {
+      const type = payload.issue?.fields?.issuetype?.name || '';
+      if (type.toLowerCase() === 'bug') return '🟥';
+      if (type.toLowerCase() === 'story') return '🟩';
+      return '🟦';
+    },
   };
 
   // Заменяем все плейсхолдеры вида {path}
