@@ -113,6 +113,28 @@ function renderTemplate(template, payload) {
     return [];
   };
 
+  const priorityEmoji = () => {
+    const pr = payload.issue?.fields?.priority || {};
+    const name = (pr.name || "").trim().toLowerCase();
+    const idNum = pr.id ? parseInt(pr.id, 10) : NaN;
+
+    // Если есть ID (стандартный Jira порядок 1..5), используем его
+    if (!Number.isNaN(idNum)) {
+      if (idNum <= 2) return "🟥"; // Highest/High/Blocker
+      if (idNum === 3) return "🟧"; // Medium
+      return "🟦"; // Low/Lowest
+    }
+
+    // Без ID — эвристика по названию (ключевые слова)
+    const highRe = /(block|high|krit|крит|сроч|высок|urgent|важн)/i;
+    const medRe = /(med|средн|normal|norm)/i;
+    const lowRe = /(low|низк|lowest|min)/i;
+    if (highRe.test(name)) return "🟥";
+    if (medRe.test(name)) return "🟧";
+    if (lowRe.test(name)) return "🟦";
+    return "🟪";
+  };
+
   let result = template;
 
   // Рекурсивно извлекаем значения по пути (например, "issue.fields.summary")
@@ -160,6 +182,9 @@ function renderTemplate(template, payload) {
       if (type.toLowerCase() === 'story') return '🟩';
       return '🟦';
     },
+    // Приоритетный индикатор
+    'priority.emoji': () => priorityEmoji(),
+    'priority_emoji': () => priorityEmoji(),
   };
 
   const escapeRegex = (str) =>
@@ -270,6 +295,10 @@ export function routeMessage(payload) {
       logger.info("Payload labels debug", {
         labels: payload.issue?.fields?.labels,
         summary: payload.issue?.fields?.summary,
+        issueKey: payload.issue?.key,
+      });
+      logger.info("Payload priority debug", {
+        priority: payload.issue?.fields?.priority,
         issueKey: payload.issue?.key,
       });
       const content = renderTemplate(rule.template, payload);
