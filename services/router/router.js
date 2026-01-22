@@ -121,8 +121,13 @@ function renderTemplate(template, payload) {
   const specialFunctions = {
     // Обработка массива labels - объединяет через запятую
     'labels': () => {
-      const labels = payload.issue?.fields?.labels || [];
-      return labels.length > 0 ? labels.join(', ') : 'нет тегов';
+      const raw = payload.issue?.fields?.labels;
+      const labelsArray = Array.isArray(raw)
+        ? raw
+        : typeof raw === "string"
+          ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
+      return labelsArray.length > 0 ? labelsArray.join(", ") : "нет тегов";
     },
     // Формирование URL задачи (нужно указать JIRA_BASE_URL в env или использовать дефолтный)
     'issue.url': () => {
