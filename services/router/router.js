@@ -258,6 +258,7 @@ export function routeMessage(payload) {
         chatId: rule.chatId,
         projectKey: payload.issue?.fields?.project?.key,
         automationName: payload.automationName,
+        renderedContentPreview: content.slice(0, 200),
       });
       return {
         chatId: rule.chatId,
