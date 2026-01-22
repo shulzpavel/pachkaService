@@ -154,10 +154,13 @@ function renderTemplate(template, payload) {
     },
   };
 
+  const escapeRegex = (str) =>
+    str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
   // Сначала подставляем специальные плейсхолдеры (без зависимости от регистра)
   for (const [placeholder, fn] of Object.entries(specialFunctions)) {
     const value = fn();
-    const regex = new RegExp(`\\{\\s*${placeholder}\\s*\\}`, "gi");
+    const regex = new RegExp(`\\{\\s*${escapeRegex(placeholder)}\\s*\\}`, "gi");
     result = result.replace(regex, value);
   }
 
