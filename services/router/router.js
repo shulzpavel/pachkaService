@@ -105,6 +105,14 @@ function renderTemplate(template, payload) {
     "Sample User": "@sample",
   };
 
+  const normalizeLabels = (raw) => {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
   let result = template;
 
   // Рекурсивно извлекаем значения по пути (например, "issue.fields.summary")
@@ -121,12 +129,7 @@ function renderTemplate(template, payload) {
   const specialFunctions = {
     // Обработка массива labels - объединяет через запятую
     'labels': () => {
-      const raw = payload.issue?.fields?.labels;
-      const labelsArray = Array.isArray(raw)
-        ? raw
-        : typeof raw === "string"
-          ? raw.split(",").map((s) => s.trim()).filter(Boolean)
-          : [];
+      const labelsArray = normalizeLabels(payload.issue?.fields?.labels);
       return labelsArray.length > 0 ? labelsArray.join(", ") : "нет тегов";
     },
     // Формирование URL задачи (нужно указать JIRA_BASE_URL в env или использовать дефолтный)
@@ -188,6 +191,13 @@ function renderTemplate(template, payload) {
  */
 function matchesRule(rule, payload) {
   const conditions = rule.conditions || {};
+  const normalizeLabels = (raw) => {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      return raw.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
+  };
 
   // Проверка automationName (приоритетная - для маршрутизации по автоматизациям)
   if (conditions.automationName) {
@@ -216,7 +226,7 @@ function matchesRule(rule, payload) {
 
   // Проверка label (если нужно)
   if (conditions.label) {
-    const labels = payload.issue?.fields?.labels || [];
+    const labels = normalizeLabels(payload.issue?.fields?.labels);
     if (!labels.includes(conditions.label)) {
       return false;
     }
