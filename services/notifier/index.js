@@ -113,7 +113,8 @@ app.post("/alert", async (req, res) => {
       const name = alert.labels?.alertname || "Alert";
       const summary = alert.annotations?.summary || name;
       const desc = alert.annotations?.description || "Без описания";
-      const starts = alert.startsAt || "неизвестно";
+      const starts = alert.startsAt ? new Date(alert.startsAt).toISOString() : "неизвестно";
+      const ends = alert.endsAt ? new Date(alert.endsAt).toISOString() : null;
       const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
       const sevText = sev === "critical" ? "Критично" : sev === "warning" ? "Предупреждение" : "Инфо";
       const source = [alert.labels?.service, alert.labels?.instance || alert.labels?.pod || alert.labels?.host, alert.labels?.job]
@@ -129,10 +130,11 @@ app.post("/alert", async (req, res) => {
         statusText,
         `Alert: ${name}`,
         `Причина: ${desc}`,
-        `Источник: ${source || "не указан"}`,
-        `Метки: ${labelsLine || "нет"}`,
+        source ? `Источник: ${source}` : null,
+        labelsLine ? `Метки: ${labelsLine}` : null,
         `Начало: ${starts}`,
-      ].join("\n");
+        ends ? `Окончание: ${ends}` : null,
+      ].filter(Boolean).join("\n");
       await sendMessageWithRetry(ALERT_CHAT_ID, content);
       metrics.recordForward("pachka", "alert_sent");
     }
