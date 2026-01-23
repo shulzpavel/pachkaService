@@ -3,7 +3,7 @@ groups:
     rules:
       - alert: ServiceDown
         expr: up{job="pachka-services"} == 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -12,7 +12,7 @@ groups:
 
       - alert: GatewayHighErrorRate
         expr: (sum(rate(http_requests_total{service="gateway",status=~"5.."}[5m])) / sum(rate(http_requests_total{service="gateway"}[5m]))) > 0.05
-        for: 5m
+        for: 1m
         labels:
           severity: warning
         annotations:
@@ -21,7 +21,7 @@ groups:
 
       - alert: GatewayHighLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
-        for: 5m
+        for: 1m
         labels:
           severity: warning
         annotations:
@@ -30,7 +30,7 @@ groups:
 
       - alert: RouterForwardErrors
         expr: rate(forward_requests_total{service="gateway",target="router",status="error"}[5m]) > 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -39,7 +39,7 @@ groups:
 
       - alert: NotifierForwardErrors
         expr: rate(forward_requests_total{service="gateway",target="notifier",status="error"}[5m]) > 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -48,7 +48,7 @@ groups:
 
       - alert: PachkaSendErrors
         expr: rate(forward_requests_total{service="notifier",target="pachka",status="error"}[5m]) > 0
-        for: 5m
+        for: 1m
         labels:
           severity: warning
         annotations:

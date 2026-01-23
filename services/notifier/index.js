@@ -109,15 +109,30 @@ app.post("/alert", async (req, res) => {
     const alerts = req.body?.alerts || [];
     for (const alert of alerts) {
       const sev = (alert.labels?.severity || "info").toLowerCase();
+      const status = (alert.status || "firing").toLowerCase();
       const name = alert.labels?.alertname || "Alert";
       const summary = alert.annotations?.summary || name;
       const desc = alert.annotations?.description || "Без описания";
+      const starts = alert.startsAt || "неизвестно";
       const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
       const sevText = sev === "critical" ? "Критично" : sev === "warning" ? "Предупреждение" : "Инфо";
-      const source = [alert.labels?.service, alert.labels?.instance, alert.labels?.job]
+      const source = [alert.labels?.service, alert.labels?.instance || alert.labels?.pod || alert.labels?.host, alert.labels?.job]
         .filter(Boolean)
         .join(" / ");
-      const content = `${emoji} ${summary} (${sevText})\n${desc}${source ? `\nИсточник: ${source}` : ""}`;
+      const labelsLine = Object.entries(alert.labels || {})
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ");
+      const statusText = status === "firing" ? "Status: FIRING 🔥" : status === "resolved" ? "Status: RESOLVED ✅" : `Status: ${status}`;
+
+      const content = [
+        `${emoji} ${summary} (${sevText})`,
+        statusText,
+        `Alert: ${name}`,
+        `Причина: ${desc}`,
+        `Источник: ${source || "не указан"}`,
+        `Метки: ${labelsLine || "нет"}`,
+        `Начало: ${starts}`,
+      ].join("\n");
       await sendMessageWithRetry(ALERT_CHAT_ID, content);
       metrics.recordForward("pachka", "alert_sent");
     }
