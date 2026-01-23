@@ -7,8 +7,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: 'Сервис {{ $labels.instance }} недоступен >2м'
-          description: 'Контейнер {{ $labels.instance }} не отвечает >2 минут. Пользователи не получают ответы. Проверь логи контейнера и healthcheck, перезапусти сервис.'
+          summary: 'Сервис {{ $labels.instance }} недоступен >1м'
+          description: 'Контейнер {{ $labels.instance }} не отвечает более 1 минуты. Пользователи не получают ответы. Проверь логи контейнера и healthcheck, перезапусти сервис.'
 
       - alert: GatewayHighErrorRate
         expr: (sum(rate(http_requests_total{service="gateway",status=~"5.."}[5m])) / sum(rate(http_requests_total{service="gateway"}[5m]))) > 0.05
