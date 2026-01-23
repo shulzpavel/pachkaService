@@ -6,7 +6,15 @@
         "automationName": "test_pachka"
       },
       "chatId": "33378975",
-      "template": "{issue_emoji} Создана задача с типом **{issue.fields.issuetype.name}**\nНазвание: {issue.fields.summary}\n{priority_emoji} Приоритет: **{priority_name}**\nМетки: {labels}\nLink: {issue.url}"
+      "template": "{issue_emoji} Создана задача с типом **{issue.fields.issuetype.name}**\n**Название:** {issue.fields.summary}\n{priority_emoji} Приоритет: **{priority_name}**\nМетки: {labels}\nLink: {issue.url}"
+    },
+    {
+      "name": "test_pachka_to_test",
+      "conditions": {
+        "automationName": "test_pachka_to_test"
+      },
+      "chatId": "33379012",
+      "template": "📢 Задача ожидает to_test\nНазвание: **{issue.fields.summary}**\nСсылка: **{issue.url}**\nQA: **{issue.fields.assignee.displayName}**"
     }
   ],
   "defaultChatId": "33378975"
