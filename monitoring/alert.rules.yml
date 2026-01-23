@@ -7,8 +7,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Сервис {{ $labels.instance }} недоступен"
-          description: "{{ $labels.instance }} не отвечает более 2 минут"
+          summary: 'Сервис {{ $labels.instance }} недоступен >2м'
+          description: 'Контейнер {{ $labels.instance }} не отвечает >2 минут. Пользователи не получают ответы. Проверь логи контейнера и healthcheck, перезапусти сервис.'
 
       - alert: GatewayHighErrorRate
         expr: (sum(rate(http_requests_total{service="gateway",status=~"5.."}[5m])) / sum(rate(http_requests_total{service="gateway"}[5m]))) > 0.05
@@ -16,8 +16,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'Ошибки 5xx на gateway выше 5%'
-          description: 'Доля 5xx {{ $value }} за 5m'
+          summary: 'Ошибки 5xx на gateway >5% за 5м'
+          description: 'Gateway отдаёт >5% 5xx за последние 5 минут. Вебхуки Jira могут не доходить. Проверь логи gateway и доступность router/notifier, внешние API.'
 
       - alert: GatewayHighLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
@@ -26,7 +26,7 @@ groups:
           severity: warning
         annotations:
           summary: 'Медленные ответы gateway (p95 > 1s)'
-          description: 'p95 latency {{ $value }}s за 5m'
+          description: '95-й перцентиль ответа gateway >1s за 5 минут. Пользователи видят задержки. Проверь нагрузку, сети, логи gateway и downstream (router/notifier).' 
 
       - alert: RouterForwardErrors
         expr: rate(forward_requests_total{service="gateway",target="router",status="error"}[5m]) > 0
@@ -34,8 +34,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Gateway не может достучаться до router"
-          description: "Есть ошибки проксирования на router"
+          summary: 'Gateway не может достучаться до router'
+          description: 'Gateway получает ошибки при вызове router. Вебхуки Jira не маршрутизируются. Проверь контейнер router, сеть внутри docker, healthcheck.'
 
       - alert: NotifierForwardErrors
         expr: rate(forward_requests_total{service="gateway",target="notifier",status="error"}[5m]) > 0
@@ -43,8 +43,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Gateway не может достучаться до notifier"
-          description: "Есть ошибки проксирования на notifier"
+          summary: 'Gateway не может достучаться до notifier'
+          description: 'Gateway получает ошибки при вызове notifier. Уведомления не отправятся в Пачку. Проверь контейнер notifier, сеть, healthcheck.'
 
       - alert: PachkaSendErrors
         expr: rate(forward_requests_total{service="notifier",target="pachka",status="error"}[5m]) > 0
@@ -52,5 +52,5 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Не отправляются сообщения в Пачку"
-          description: "Ошибки при отправке сообщений в Пачку"
+          summary: 'Не отправляются сообщения в Пачку'
+          description: 'Notifier получает ошибки от API Пачки (429/5xx). Сообщения не доставляются. Проверь токен, лимиты, доступ к api.pachca.com, логи notifier.'
