@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Копируем shared package и ставим зависимости
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --omit=dev
+RUN cd shared && npm install --omit=dev
 
 # Копируем shared код
 COPY shared ./shared
@@ -12,7 +12,7 @@ COPY shared ./shared
 # Устанавливаем зависимости notifier
 WORKDIR /app/services/notifier
 COPY services/notifier/package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Копируем код notifier (относительные пути ../../shared остаются валидны)
 COPY services/notifier/*.js ./

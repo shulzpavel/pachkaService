@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Копируем shared package и ставим зависимости
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --omit=dev
+RUN cd shared && npm install --omit=dev
 
 # Копируем shared код
 COPY shared ./shared

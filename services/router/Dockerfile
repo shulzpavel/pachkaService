@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Копируем shared package и ставим зависимости
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --omit=dev
+# Используем npm install, чтобы восстановить lock при отсутствии сети
+RUN cd shared && npm install --omit=dev
 
 # Копируем shared код
 COPY shared ./shared
@@ -12,7 +13,7 @@ COPY shared ./shared
 # Устанавливаем зависимости router
 WORKDIR /app/services/router
 COPY services/router/package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Копируем код router (сохраняем относительные пути ../../shared)
 COPY services/router/*.js ./
