@@ -113,8 +113,8 @@ app.post("/alert", async (req, res) => {
       const name = alert.labels?.alertname || "Alert";
       const summary = alert.annotations?.summary || name;
       const desc = alert.annotations?.description || "Без описания";
-      const starts = alert.startsAt ? new Date(alert.startsAt).toISOString() : "неизвестно";
-      const ends = alert.endsAt ? new Date(alert.endsAt).toISOString() : null;
+      const starts = alert.startsAt || null;
+      const ends = alert.endsAt || null;
       const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
       const sevText = sev === "critical" ? "Критично" : sev === "warning" ? "Предупреждение" : "Инфо";
       const source = [alert.labels?.service, alert.labels?.instance || alert.labels?.pod || alert.labels?.host, alert.labels?.job]
@@ -123,17 +123,25 @@ app.post("/alert", async (req, res) => {
       const labelsLine = Object.entries(alert.labels || {})
         .map(([k, v]) => `${k}=${v}`)
         .join(", ");
-      const statusText = status === "firing" ? "Status: FIRING 🔥" : status === "resolved" ? "Status: RESOLVED ✅" : `Status: ${status}`;
+      const statusText = status === "firing" ? "FIRING 🔥" : status === "resolved" ? "RESOLVED ✅" : status.toUpperCase();
+
+      const formatDate = (iso) => {
+        if (!iso) return "-";
+        const d = new Date(iso);
+        if (!Number.isFinite(d.getTime()) || d.getFullYear() < 1970) return "-";
+        const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
+        return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
 
       const content = [
-        `${emoji} ${summary} (${sevText})`,
-        statusText,
-        `Alert: ${name}`,
-        `Причина: ${desc}`,
-        source ? `Источник: ${source}` : null,
-        labelsLine ? `Метки: ${labelsLine}` : null,
-        `Начало: ${starts}`,
-        ends ? `Окончание: ${ends}` : null,
+        `${emoji} **${summary} (${sevText})**`,
+        `**Status:** ${statusText}`,
+        `**Alert:** ${name}`,
+        `**Причина:** ${desc}`,
+        source ? `**Источник:** ${source}` : null,
+        labelsLine ? `**Метки:** ${labelsLine}` : null,
+        `**Начало:** ${formatDate(starts)}`,
+        ends ? `**Окончание:** ${formatDate(ends)}` : null,
       ].filter(Boolean).join("\n");
       await sendMessageWithRetry(ALERT_CHAT_ID, content);
       metrics.recordForward("pachka", "alert_sent");
