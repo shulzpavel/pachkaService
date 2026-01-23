@@ -70,6 +70,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SERVICE_NAME=notifier
       - PACHKA_API_BASE=${PACHKA_API_BASE:-https://api.pachca.com/api/shared/v1}
+      - ALERT_CHAT_ID=${ALERT_CHAT_ID:-33378985}
     env_file:
       - .env
     networks:
@@ -81,6 +82,50 @@ services:
       timeout: 3s
       retries: 3
 
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: jira-pachka-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: jira-pachka-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: jira-pachka-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3003:3000"
+    volumes:
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - jira-pachka-network
+    restart: unless-stopped
+
 networks:
   jira-pachka-network:
     driver: bridge
+
+volumes:
+  grafana-data:

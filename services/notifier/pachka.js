@@ -1,8 +1,10 @@
 import fetch from "node-fetch";
 import logger from "../../shared/logger.js";
+import { createMetrics } from "../../shared/metrics.js";
 
 const PACHKA_API_BASE = process.env.PACHKA_API_BASE || "https://api.pachca.com/api/shared/v1";
 const PACHKA_TOKEN = process.env.PACHKA_TOKEN;
+const metrics = createMetrics("notifier"); // отдельный регистр для отправок
 
 if (!PACHKA_TOKEN) {
   throw new Error("PACHKA_TOKEN is required in environment variables");
@@ -76,6 +78,7 @@ export async function sendMessage(chatId, content, files = null) {
       throw new Error(`Invalid entity_id in body: ${body.message.entity_id} (type: ${typeof body.message.entity_id})`);
     }
 
+    const started = Date.now();
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -84,6 +87,7 @@ export async function sendMessage(chatId, content, files = null) {
       },
       body: bodyString,
     });
+    metrics.recordForward("pachka", response.status, (Date.now() - started) / 1000);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -115,6 +119,7 @@ export async function sendMessage(chatId, content, files = null) {
     logger.info(`Message sent successfully to chat ${chatId}`, { chatId, messageId: data.id });
     return data;
   } catch (error) {
+    metrics.recordForward("pachka", "error");
     logger.error(`Failed to send message to chat ${chatId}`, {
       chatId,
       error: error.message,

@@ -9,6 +9,7 @@ import {
 } from "../../shared/security.js";
 import { validateJiraPayload, logPayloadStructure } from "../../shared/validator.js";
 import { fetchWithTimeout } from "../../shared/fetch-with-timeout.js";
+import { createMetrics } from "../../shared/metrics.js";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ const app = express();
 const PORT = process.env.GATEWAY_PORT || 3000;
 const ROUTER_SERVICE_URL = process.env.ROUTER_SERVICE_URL || "http://router:3001";
 const NOTIFIER_SERVICE_URL = process.env.NOTIFIER_SERVICE_URL || "http://notifier:3002";
+const metrics = createMetrics("gateway");
 
 // Trust proxy - только для конкретных IP/подсетей (защита от спуфинга)
 // Если используешь reverse proxy, укажи его IP в TRUSTED_PROXIES
@@ -94,6 +96,10 @@ app.use(
 );
 
 app.use(express.json({ limit: "1mb" }));
+app.use(metrics.httpMiddleware);
+
+// Метрики
+app.get("/metrics", metrics.metricsHandler);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -217,6 +223,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
     const routerUrl = `${ROUTER_SERVICE_URL}/route`;
     logger.debug("Forwarding to router", { url: routerUrl });
     
+    const routerStart = Date.now();
     // Форвардим в Router Service с реальным timeout
     const routerResponse = await fetchWithTimeout(
       routerUrl,
@@ -230,6 +237,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
       },
       10000 // 10 секунд timeout
     );
+    metrics.recordForward("router", routerResponse.status, (Date.now() - routerStart) / 1000);
 
     if (!routerResponse.ok) {
       const errorText = await routerResponse.text();
@@ -286,6 +294,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
       },
       15000 // 15 секунд timeout
     );
+    metrics.recordForward("notifier", notifierResponse.status, (Date.now() - routerStart) / 1000);
 
     if (!notifierResponse.ok) {
       const errorText = await notifierResponse.text();
@@ -347,6 +356,9 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
       error.message.includes("ECONNREFUSED") ||
       error.message.includes("ECONNRESET") ||
       error.name === "TimeoutError";
+
+    metrics.recordForward("router", "error");
+    metrics.recordForward("notifier", "error");
 
     // Для retryable ошибок возвращаем 503 (Jira повторит)
     if (isRetryable) {

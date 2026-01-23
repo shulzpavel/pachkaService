@@ -3,11 +3,13 @@ import dotenv from "dotenv";
 import logger from "../../shared/logger.js";
 import { verifyApiKey, isIPAllowed } from "../../shared/security.js";
 import { routeMessage, reloadRoutes, getRoutesConfig } from "./router.js";
+import { createMetrics } from "../../shared/metrics.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.ROUTER_PORT || 3001;
+const metrics = createMetrics("router");
 
 // Middleware для проверки внутреннего доступа (только от gateway)
 // ОТКЛЮЧЕНО для локального тестирования - установи INTERNAL_ALLOWED_IPS для production
@@ -35,6 +37,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "1mb" }));
+app.use(metrics.httpMiddleware);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -44,6 +47,9 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Метрики
+app.get("/metrics", metrics.metricsHandler);
 
 // Статус конфигурации
 app.get("/status", (req, res) => {

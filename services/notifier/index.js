@@ -2,12 +2,15 @@ import express from "express";
 import dotenv from "dotenv";
 import logger from "../../shared/logger.js";
 import { isIPAllowed } from "../../shared/security.js";
-import { sendMessage, sendMessageWithRetry } from "./pachka.js";
+import { sendMessageWithRetry } from "./pachka.js";
+import { createMetrics } from "../../shared/metrics.js";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.NOTIFIER_PORT || 3002;
+const ALERT_CHAT_ID = process.env.ALERT_CHAT_ID || "33378985";
+const metrics = createMetrics("notifier");
 
 // Middleware для проверки внутреннего доступа (только от gateway)
 // ОТКЛЮЧЕНО для локального тестирования - установи INTERNAL_ALLOWED_IPS для production
@@ -35,6 +38,10 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "1mb" }));
+app.use(metrics.httpMiddleware);
+
+// Метрики
+app.get("/metrics", metrics.metricsHandler);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -93,6 +100,27 @@ app.post("/notify", async (req, res) => {
       error: error.message,
       retryable: isRetryable,
     });
+  }
+});
+
+// Приём алертов от Alertmanager
+app.post("/alert", async (req, res) => {
+  try {
+    const alerts = req.body?.alerts || [];
+    for (const alert of alerts) {
+      const sev = alert.labels?.severity || "info";
+      const name = alert.labels?.alertname || "Alert";
+      const desc = alert.annotations?.description || alert.annotations?.summary || "Без описания";
+      const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
+      const content = `${emoji} ${name}\n${desc}`;
+      await sendMessageWithRetry(ALERT_CHAT_ID, content);
+      metrics.recordForward("pachka", "alert_sent");
+    }
+    res.json({ status: "ok" });
+  } catch (error) {
+    metrics.recordForward("pachka", "alert_error");
+    logger.error("Failed to handle alert", { error: error.message });
+    res.status(500).json({ status: "error", error: error.message });
   }
 });
 

@@ -1,0 +1,56 @@
+groups:
+  - name: pachka-service-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="pachka-services"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Сервис {{ $labels.instance }} недоступен"
+          description: "{{ $labels.instance }} не отвечает более 2 минут"
+
+      - alert: GatewayHighErrorRate
+        expr: (sum(rate(http_requests_total{service="gateway",status=~"5.."}[5m])) / sum(rate(http_requests_total{service="gateway"}[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ошибки 5xx на gateway выше 5%"
+          description: "Доля 5xx {{ printf "%.2f" ($value*100) }}% за 5m"
+
+      - alert: GatewayHighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленные ответы gateway (p95 > 1s)"
+          description: "p95 latency {{ printf "%.2f" $value }}s за 5m"
+
+      - alert: RouterForwardErrors
+        expr: rate(forward_requests_total{service="gateway",target="router",status="error"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Gateway не может достучаться до router"
+          description: "Есть ошибки проксирования на router"
+
+      - alert: NotifierForwardErrors
+        expr: rate(forward_requests_total{service="gateway",target="notifier",status="error"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Gateway не может достучаться до notifier"
+          description: "Есть ошибки проксирования на notifier"
+
+      - alert: PachkaSendErrors
+        expr: rate(forward_requests_total{service="notifier",target="pachka",status="error"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Не отправляются сообщения в Пачку"
+          description: "Ошибки при отправке сообщений в Пачку"
