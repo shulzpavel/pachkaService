@@ -14,7 +14,7 @@
         "automationName": "test_pachka_to_test"
       },
       "chatId": "33379012",
-      "template": "📢 Задача ожидает to_test\nНазвание: **{issue.fields.summary}**\nСсылка: **{issue.url}**\nQA: **{issue.fields.assignee.displayName}**"
+      "template": "**📢 Задача ожидает to_test**\nНазвание: {issue.fields.summary}\nСсылка: {issue.url}\nQA: {issue.fields.assignee.displayName}"
     }
   ],
   "defaultChatId": "33378975"
