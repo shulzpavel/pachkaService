@@ -16,8 +16,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Ошибки 5xx на gateway выше 5%"
-          description: "Доля 5xx {{ printf "%.2f" ($value*100) }}% за 5m"
+          summary: 'Ошибки 5xx на gateway выше 5%'
+          description: 'Доля 5xx {{ printf "%.2f" ($value*100) }}% за 5m'
 
       - alert: GatewayHighLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
@@ -25,8 +25,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Медленные ответы gateway (p95 > 1s)"
-          description: "p95 latency {{ printf "%.2f" $value }}s за 5m"
+          summary: 'Медленные ответы gateway (p95 > 1s)'
+          description: 'p95 latency {{ printf "%.2f" $value }}s за 5m'
 
       - alert: RouterForwardErrors
         expr: rate(forward_requests_total{service="gateway",target="router",status="error"}[5m]) > 0
