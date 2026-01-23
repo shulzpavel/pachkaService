@@ -108,11 +108,16 @@ app.post("/alert", async (req, res) => {
   try {
     const alerts = req.body?.alerts || [];
     for (const alert of alerts) {
-      const sev = alert.labels?.severity || "info";
+      const sev = (alert.labels?.severity || "info").toLowerCase();
       const name = alert.labels?.alertname || "Alert";
-      const desc = alert.annotations?.description || alert.annotations?.summary || "Без описания";
+      const summary = alert.annotations?.summary || name;
+      const desc = alert.annotations?.description || "Без описания";
       const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
-      const content = `${emoji} ${name}\n${desc}`;
+      const sevText = sev === "critical" ? "Критично" : sev === "warning" ? "Предупреждение" : "Инфо";
+      const source = [alert.labels?.service, alert.labels?.instance, alert.labels?.job]
+        .filter(Boolean)
+        .join(" / ");
+      const content = `${emoji} ${summary} (${sevText})\n${desc}${source ? `\nИсточник: ${source}` : ""}`;
       await sendMessageWithRetry(ALERT_CHAT_ID, content);
       metrics.recordForward("pachka", "alert_sent");
     }
