@@ -21,7 +21,7 @@ const NOTIFIER_SERVICE_URL = process.env.NOTIFIER_SERVICE_URL || "http://notifie
 const metrics = createMetrics("gateway");
 const MAX_CONCURRENCY = parseInt(process.env.GATEWAY_CONCURRENCY || "10", 10);
 const MAX_QUEUE = parseInt(process.env.GATEWAY_MAX_QUEUE || "200", 10);
-const breakerGauge = new (await import("prom-client")).Gauge({
+const breakerGauge = new metrics.client.Gauge({
   name: "gateway_circuit_breaker_state",
   help: "Circuit breaker state (0 closed,1 half-open,2 open)",
   labelNames: ["target"],

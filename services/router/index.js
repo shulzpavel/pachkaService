@@ -4,19 +4,12 @@ import logger from "../../shared/logger.js";
 import { verifyApiKey, isIPAllowed } from "../../shared/security.js";
 import { routeMessage, reloadRoutes, getRoutesConfig } from "./router.js";
 import { createMetrics } from "../../shared/metrics.js";
-import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.ROUTER_PORT || 3001;
 const metrics = createMetrics("router");
-const routerLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // Middleware для проверки внутреннего доступа (только от gateway)
 // ОТКЛЮЧЕНО для локального тестирования - установи INTERNAL_ALLOWED_IPS для production
@@ -53,7 +46,6 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "1mb" }));
 app.use(metrics.httpMiddleware);
-app.use(routerLimiter);
 
 // Health check
 app.get("/health", (req, res) => {

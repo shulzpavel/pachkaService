@@ -29,25 +29,18 @@ const pachkaBreaker = new CircuitBreaker("pachka", {
 // Простая очередь с ограничением параллельных отправок
 let inFlight = 0;
 const queue = [];
-let queueGauge = null;
-let breakerGauge = null;
-try {
-  const client = await import("prom-client");
-  queueGauge = new client.Gauge({
-    name: "notifier_queue_length",
-    help: "Current notifier queue length",
-    registers: [metrics.register],
-  });
-  breakerGauge = new client.Gauge({
-    name: "notifier_circuit_breaker_state",
-    help: "Circuit breaker state (0 closed,1 half-open,2 open)",
-    labelNames: ["target"],
-    registers: [metrics.register],
-  });
-  breakerGauge.set({ target: "pachka" }, circuitBreakerStateCode.CLOSED);
-} catch {
-  // пром-клиент уже есть, но если что-то пойдет не так - просто пропустим метрику
-}
+const queueGauge = new metrics.client.Gauge({
+  name: "notifier_queue_length",
+  help: "Current notifier queue length",
+  registers: [metrics.register],
+});
+const breakerGauge = new metrics.client.Gauge({
+  name: "notifier_circuit_breaker_state",
+  help: "Circuit breaker state (0 closed,1 half-open,2 open)",
+  labelNames: ["target"],
+  registers: [metrics.register],
+});
+breakerGauge.set({ target: "pachka" }, circuitBreakerStateCode.CLOSED);
 const processQueue = () => {
   if (inFlight >= MAX_CONCURRENCY) return;
   const job = queue.shift();
