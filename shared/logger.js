@@ -32,4 +32,11 @@ if (process.env.NODE_ENV === "production" && process.env.LOG_FILE) {
   );
 }
 
+// Семплированный лог для шумных событий
+logger.sampled = (rate, level, message, meta = {}) => {
+  if (Math.random() < rate) {
+    logger.log(level, message, meta);
+  }
+};
+
 export default logger;

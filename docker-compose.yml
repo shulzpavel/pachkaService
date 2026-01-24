@@ -90,6 +90,7 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks:
@@ -103,6 +104,7 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
     volumes:
       - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
     ports:
       - "9093:9093"
     networks:
@@ -118,6 +120,8 @@ services:
       - "3003:3000"
     volumes:
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./monitoring/grafana/dashboards/json:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     networks:
       - jira-pachka-network
@@ -129,3 +133,5 @@ networks:
 
 volumes:
   grafana-data:
+  prometheus-data:
+  alertmanager-data:

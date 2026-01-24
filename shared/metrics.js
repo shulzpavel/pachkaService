@@ -37,8 +37,8 @@ export function createMetrics(serviceName) {
   const forwardDuration = new client.Histogram({
     name: "forward_request_duration_seconds",
     help: "External/forward request duration",
-    labelNames: ["service", "target"],
-    buckets: [0.05, 0.1, 0.3, 1, 3, 10],
+    labelNames: ["service", "target", "result"],
+    buckets: [0.05, 0.1, 0.3, 1, 3, 10, 30],
     registers: [register],
   });
 
@@ -62,14 +62,14 @@ export function createMetrics(serviceName) {
     next();
   };
 
-  const recordForward = (target, status, durationSeconds) => {
+  const recordForward = (target, status, durationSeconds, result = "ok") => {
     forwardRequests.inc({
       service: serviceName,
       target,
       status,
     });
     if (durationSeconds !== undefined) {
-      forwardDuration.observe({ service: serviceName, target }, durationSeconds);
+      forwardDuration.observe({ service: serviceName, target, result }, durationSeconds);
     }
   };
 

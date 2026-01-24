@@ -4,6 +4,9 @@ import logger from "../../shared/logger.js";
 import { isIPAllowed } from "../../shared/security.js";
 import { sendMessageWithRetry } from "./pachka.js";
 import { createMetrics } from "../../shared/metrics.js";
+import { formatAlertMessage } from "./alertFormatter.js";
+import { shouldSendAlert } from "./alertProcessor.js";
+import { CircuitBreaker, circuitBreakerStateCode } from "../../shared/circuit-breaker.js";
 
 dotenv.config();
 
@@ -11,6 +14,71 @@ const app = express();
 const PORT = process.env.NOTIFIER_PORT || 3002;
 const ALERT_CHAT_ID = process.env.ALERT_CHAT_ID || "33378985";
 const metrics = createMetrics("notifier");
+const alertCache = new Map();
+const MAX_CONCURRENCY = parseInt(process.env.NOTIFIER_CONCURRENCY || "5", 10);
+const SEND_TIMEOUT_MS = parseInt(process.env.NOTIFIER_TIMEOUT_MS || "10000", 10);
+const MAX_QUEUE = parseInt(process.env.NOTIFIER_MAX_QUEUE || "500", 10);
+
+// Circuit breaker для Pachka API
+const pachkaBreaker = new CircuitBreaker("pachka", {
+  failThreshold: parseInt(process.env.BREAKER_FAIL_THRESHOLD || "5", 10),
+  cooldownMs: parseInt(process.env.BREAKER_COOLDOWN_MS || "30000", 10),
+  onStateChange: (state, code) => breakerGauge.set({ target: "pachka" }, code),
+});
+
+// Простая очередь с ограничением параллельных отправок
+let inFlight = 0;
+const queue = [];
+let queueGauge = null;
+let breakerGauge = null;
+try {
+  const client = await import("prom-client");
+  queueGauge = new client.Gauge({
+    name: "notifier_queue_length",
+    help: "Current notifier queue length",
+    registers: [metrics.register],
+  });
+  breakerGauge = new client.Gauge({
+    name: "notifier_circuit_breaker_state",
+    help: "Circuit breaker state (0 closed,1 half-open,2 open)",
+    labelNames: ["target"],
+    registers: [metrics.register],
+  });
+  breakerGauge.set({ target: "pachka" }, circuitBreakerStateCode.CLOSED);
+} catch {
+  // пром-клиент уже есть, но если что-то пойдет не так - просто пропустим метрику
+}
+const processQueue = () => {
+  if (inFlight >= MAX_CONCURRENCY) return;
+  const job = queue.shift();
+  if (!job) return;
+  inFlight++;
+  job()
+    .catch(() => {})
+    .finally(() => {
+      inFlight--;
+      if (queueGauge) queueGauge.set(queue.length);
+      processQueue();
+    });
+};
+const enqueueSend = (fn) =>
+  new Promise((resolve, reject) => {
+    if (queue.length >= MAX_QUEUE) {
+      const err = new Error("Notifier queue overflow");
+      err.isRetryable = true;
+      return reject(err);
+    }
+    queue.push(async () => {
+      try {
+        const res = await fn();
+        resolve(res);
+      } catch (e) {
+        reject(e);
+      }
+    });
+    if (queueGauge) queueGauge.set(queue.length);
+    processQueue();
+  });
 
 // Middleware для проверки внутреннего доступа (только от gateway)
 // ОТКЛЮЧЕНО для локального тестирования - установи INTERNAL_ALLOWED_IPS для production
@@ -70,7 +138,9 @@ app.post("/notify", async (req, res) => {
       issueKey: metadata?.issueKey,
     });
 
-    await sendMessageWithRetry(chatId, content);
+    await enqueueSend(() =>
+      pachkaBreaker.exec(() => sendMessageWithRetry(chatId, content, null, 3, SEND_TIMEOUT_MS))
+    );
 
     logger.info("Notification sent successfully", {
       chatId,
@@ -108,47 +178,19 @@ app.post("/alert", async (req, res) => {
   try {
     const alerts = req.body?.alerts || [];
     for (const alert of alerts) {
-      const sev = (alert.labels?.severity || "info").toLowerCase();
-      const status = (alert.status || "firing").toLowerCase();
-      const name = alert.labels?.alertname || "Alert";
-      const summary = alert.annotations?.summary || name;
-      const desc = alert.annotations?.description || "Без описания";
-      const starts = alert.startsAt || null;
-      const ends = alert.endsAt || null;
-      const emoji = sev === "critical" ? "🟥" : sev === "warning" ? "🟧" : "🟦";
-      const sevText = sev === "critical" ? "Критично" : sev === "warning" ? "Предупреждение" : "Инфо";
-      const source = [alert.labels?.service, alert.labels?.instance || alert.labels?.pod || alert.labels?.host, alert.labels?.job]
-        .filter(Boolean)
-        .join(" / ");
-      const labelsLine = Object.entries(alert.labels || {})
-        .map(([k, v]) => `${k}=${v}`)
-        .join(", ");
-      const statusText = status === "firing" ? "FIRING 🔥" : status === "resolved" ? "RESOLVED ✅" : status.toUpperCase();
-
-      const formatDate = (iso) => {
-        if (!iso) return "-";
-        const d = new Date(iso);
-        if (!Number.isFinite(d.getTime()) || d.getFullYear() < 1970) return "-";
-        const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
-        return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      };
-
-      const content = [
-        `${emoji} **${summary} (${sevText})**`,
-        `**Status:** ${statusText}`,
-        `**Alert:** ${name}`,
-        `**Причина:** ${desc}`,
-        source ? `**Источник:** ${source}` : null,
-        labelsLine ? `**Метки:** ${labelsLine}` : null,
-        `**Начало:** ${formatDate(starts)}`,
-        ends ? `**Окончание:** ${formatDate(ends)}` : null,
-      ].filter(Boolean).join("\n");
-      await sendMessageWithRetry(ALERT_CHAT_ID, content);
-      metrics.recordForward("pachka", "alert_sent");
+      if (!shouldSendAlert(alertCache, alert)) {
+        logger.debug?.("Skip duplicate alert", { fingerprint: alert.fingerprint, status: alert.status });
+        continue;
+      }
+      const content = formatAlertMessage(alert);
+      await enqueueSend(() =>
+        pachkaBreaker.exec(() => sendMessageWithRetry(ALERT_CHAT_ID, content, null, 3, SEND_TIMEOUT_MS))
+      );
+      metrics.recordForward("pachka", "alert_sent", undefined, "ok");
     }
     res.json({ status: "ok" });
   } catch (error) {
-    metrics.recordForward("pachka", "alert_error");
+    metrics.recordForward("pachka", "alert_error", undefined, "error");
     logger.error("Failed to handle alert", { error: error.message });
     res.status(500).json({ status: "error", error: error.message });
   }

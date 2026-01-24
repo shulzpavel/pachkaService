@@ -8,7 +8,8 @@ import {
   isIPAllowed,
 } from "../../shared/security.js";
 import { validateJiraPayload, logPayloadStructure } from "../../shared/validator.js";
-import { fetchWithTimeout } from "../../shared/fetch-with-timeout.js";
+import { requestWithRetry } from "../../shared/request-with-retry.js";
+import { CircuitBreaker, circuitBreakerStateCode } from "../../shared/circuit-breaker.js";
 import { createMetrics } from "../../shared/metrics.js";
 
 dotenv.config();
@@ -18,6 +19,59 @@ const PORT = process.env.GATEWAY_PORT || 3000;
 const ROUTER_SERVICE_URL = process.env.ROUTER_SERVICE_URL || "http://router:3001";
 const NOTIFIER_SERVICE_URL = process.env.NOTIFIER_SERVICE_URL || "http://notifier:3002";
 const metrics = createMetrics("gateway");
+const MAX_CONCURRENCY = parseInt(process.env.GATEWAY_CONCURRENCY || "10", 10);
+const MAX_QUEUE = parseInt(process.env.GATEWAY_MAX_QUEUE || "200", 10);
+const breakerGauge = new (await import("prom-client")).Gauge({
+  name: "gateway_circuit_breaker_state",
+  help: "Circuit breaker state (0 closed,1 half-open,2 open)",
+  labelNames: ["target"],
+  registers: [metrics.register],
+});
+const routerBreaker = new CircuitBreaker("router", {
+  failThreshold: parseInt(process.env.BREAKER_FAIL_THRESHOLD || "5", 10),
+  cooldownMs: parseInt(process.env.BREAKER_COOLDOWN_MS || "30000", 10),
+  onStateChange: (state, code) => breakerGauge.set({ target: "router" }, code),
+});
+const notifierBreaker = new CircuitBreaker("notifier", {
+  failThreshold: parseInt(process.env.BREAKER_FAIL_THRESHOLD || "5", 10),
+  cooldownMs: parseInt(process.env.BREAKER_COOLDOWN_MS || "30000", 10),
+  onStateChange: (state, code) => breakerGauge.set({ target: "notifier" }, code),
+});
+breakerGauge.set({ target: "router" }, circuitBreakerStateCode.CLOSED);
+breakerGauge.set({ target: "notifier" }, circuitBreakerStateCode.CLOSED);
+
+let inFlight = 0;
+const queue = [];
+const enqueue = (job) =>
+  new Promise((resolve, reject) => {
+    if (queue.length >= MAX_QUEUE) {
+      const err = new Error("Gateway queue overflow");
+      err.isRetryable = true;
+      return reject(err);
+    }
+    queue.push(async () => {
+      try {
+        const res = await job();
+        resolve(res);
+      } catch (e) {
+        reject(e);
+      }
+    });
+    processQueue();
+  });
+
+function processQueue() {
+  if (inFlight >= MAX_CONCURRENCY) return;
+  const job = queue.shift();
+  if (!job) return;
+  inFlight++;
+  job()
+    .catch(() => {})
+    .finally(() => {
+      inFlight--;
+      processQueue();
+    });
+}
 
 // Trust proxy - только для конкретных IP/подсетей (защита от спуфинга)
 // Если используешь reverse proxy, укажи его IP в TRUSTED_PROXIES
@@ -34,27 +88,30 @@ if (trustedProxies.length > 0) {
 // Rate limiting
 const webhookLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 100,
+  max: parseInt(process.env.GATEWAY_RATE_LIMIT_PER_IP || "100", 10),
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
-    // ОТКЛЮЧЕНО для локального тестирования - установи JIRA_ALLOWED_IPS для production
-    if (!process.env.JIRA_ALLOWED_IPS || process.env.JIRA_ALLOWED_IPS.trim() === "") {
-      return true; // Пропускаем rate limit если IP allowlist не настроен
-    }
-    const allowedIPs = process.env.JIRA_ALLOWED_IPS.split(",").map((ip) => ip.trim());
-    if (allowedIPs.length > 0) {
-      const clientIP = req.ip || req.connection.remoteAddress;
-      return isIPAllowed(clientIP, allowedIPs);
-    }
-    return false;
-  },
+});
+// Глобальный лимит (token bucket) для защиты от штормов
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: parseInt(process.env.GATEWAY_RATE_LIMIT_GLOBAL || "300", 10),
+  standardHeaders: false,
+  legacyHeaders: false,
+  keyGenerator: () => "global",
 });
 
-// Middleware для сохранения raw body для HMAC
+// Content-Type guard + сохранение raw body для HMAC
 app.use(
   "/jira/webhook",
+  globalLimiter,
+  (req, res, next) => {
+    if (!req.is("application/json")) {
+      return res.status(415).json({ error: "Unsupported content-type, expected application/json" });
+    }
+    next();
+  },
   express.raw({ type: "application/json", limit: "1mb" }),
   (req, res, next) => {
     try {
@@ -144,7 +201,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
   
   // Логируем начало обработки запроса
   const clientIP = req.ip || req.connection.remoteAddress;
-  logger.info("Webhook request received", {
+  logger.sampled(0.05, "info", "Webhook request received", {
     method: req.method,
     path: req.path,
     ip: clientIP,
@@ -225,19 +282,23 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
     
     const routerStart = Date.now();
     // Форвардим в Router Service с реальным timeout
-    const routerResponse = await fetchWithTimeout(
-      routerUrl,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Request-ID": req.headers["x-request-id"] || crypto.randomUUID(),
-        },
-        body: JSON.stringify(payload),
-      },
-      10000 // 10 секунд timeout
+    const routerResponse = await enqueue(() =>
+      routerBreaker.exec(() =>
+        requestWithRetry(
+          routerUrl,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Request-ID": req.headers["x-request-id"] || crypto.randomUUID(),
+            },
+            body: JSON.stringify(payload),
+          },
+          { timeoutMs: 10000, retries: 3, backoffMs: 300 }
+        )
+      )
     );
-    metrics.recordForward("router", routerResponse.status, (Date.now() - routerStart) / 1000);
+    metrics.recordForward("router", routerResponse.status, (Date.now() - routerStart) / 1000, "ok");
 
     if (!routerResponse.ok) {
       const errorText = await routerResponse.text();
@@ -275,26 +336,30 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
     }
 
     // Форвардим в Notifier Service с реальным timeout
-    const notifierResponse = await fetchWithTimeout(
-      `${NOTIFIER_SERVICE_URL}/notify`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Request-ID": req.headers["x-request-id"] || crypto.randomUUID(),
-        },
-        body: JSON.stringify({
-          chatId: routeResult.route.chatId,
-          content: routeResult.route.content,
-          metadata: {
-            ruleName: routeResult.route.ruleName,
-            issueKey: payload.issue?.key,
+    const notifierResponse = await enqueue(() =>
+      notifierBreaker.exec(() =>
+        requestWithRetry(
+          `${NOTIFIER_SERVICE_URL}/notify`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Request-ID": req.headers["x-request-id"] || crypto.randomUUID(),
+            },
+            body: JSON.stringify({
+              chatId: routeResult.route.chatId,
+              content: routeResult.route.content,
+              metadata: {
+                ruleName: routeResult.route.ruleName,
+                issueKey: payload.issue?.key,
+              },
+            }),
           },
-        }),
-      },
-      15000 // 15 секунд timeout
+          { timeoutMs: 15000, retries: 3, backoffMs: 300 }
+        )
+      )
     );
-    metrics.recordForward("notifier", notifierResponse.status, (Date.now() - routerStart) / 1000);
+    metrics.recordForward("notifier", notifierResponse.status, (Date.now() - routerStart) / 1000, "ok");
 
     if (!notifierResponse.ok) {
       const errorText = await notifierResponse.text();
@@ -357,8 +422,8 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
       error.message.includes("ECONNRESET") ||
       error.name === "TimeoutError";
 
-    metrics.recordForward("router", "error");
-    metrics.recordForward("notifier", "error");
+    metrics.recordForward("router", "error", undefined, "error");
+    metrics.recordForward("notifier", "error", undefined, "error");
 
     // Для retryable ошибок возвращаем 503 (Jira повторит)
     if (isRetryable) {

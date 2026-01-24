@@ -1,6 +1,6 @@
-import fetch from "node-fetch";
 import logger from "../../shared/logger.js";
 import { createMetrics } from "../../shared/metrics.js";
+import { fetchWithTimeout } from "../../shared/fetch-with-timeout.js";
 
 const PACHKA_API_BASE = process.env.PACHKA_API_BASE || "https://api.pachca.com/api/shared/v1";
 const PACHKA_TOKEN = process.env.PACHKA_TOKEN;
@@ -17,7 +17,7 @@ if (!PACHKA_TOKEN) {
  * @param {Array} files - Массив файлов (опционально)
  * @returns {Promise<Object>} Ответ API
  */
-export async function sendMessage(chatId, content, files = null) {
+export async function sendMessage(chatId, content, files = null, timeoutMs = 10000) {
   // Правильный endpoint для отправки сообщений
   const url = `${PACHKA_API_BASE}/messages`;
 
@@ -58,7 +58,7 @@ export async function sendMessage(chatId, content, files = null) {
   }
 
   try {
-    logger.info(`Sending message to chat ${chatId}`, { 
+    logger.sampled(0.05, "info", `Sending message to chat ${chatId}`, { 
       chatId, 
       entityId,
       contentLength: content.length,
@@ -68,10 +68,7 @@ export async function sendMessage(chatId, content, files = null) {
       tokenLength: PACHKA_TOKEN?.length || 0,
     });
 
-    // Всегда логируем body для отладки
     const bodyString = JSON.stringify(body);
-    logger.info(`Request body: ${bodyString}`);
-    logger.info(`Entity ID type: ${typeof body.message.entity_id}, value: ${body.message.entity_id}`);
 
     // Проверяем что entity_id валидный перед отправкой
     if (!body.message.entity_id || isNaN(body.message.entity_id) || body.message.entity_id <= 0) {
@@ -79,14 +76,14 @@ export async function sendMessage(chatId, content, files = null) {
     }
 
     const started = Date.now();
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${PACHKA_TOKEN}`,
       },
       body: bodyString,
-    });
+    }, timeoutMs);
     metrics.recordForward("pachka", response.status, (Date.now() - started) / 1000);
 
     if (!response.ok) {
@@ -138,12 +135,12 @@ export async function sendMessage(chatId, content, files = null) {
  * @param {number} maxRetries
  * @returns {Promise<Object>}
  */
-export async function sendMessageWithRetry(chatId, content, files = null, maxRetries = 3) {
+export async function sendMessageWithRetry(chatId, content, files = null, maxRetries = 3, timeoutMs = 10000) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await sendMessage(chatId, content, files);
+      return await sendMessage(chatId, content, files, timeoutMs);
     } catch (error) {
       lastError = error;
       

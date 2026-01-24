@@ -4,12 +4,19 @@ import logger from "../../shared/logger.js";
 import { verifyApiKey, isIPAllowed } from "../../shared/security.js";
 import { routeMessage, reloadRoutes, getRoutesConfig } from "./router.js";
 import { createMetrics } from "../../shared/metrics.js";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.ROUTER_PORT || 3001;
 const metrics = createMetrics("router");
+const routerLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Middleware для проверки внутреннего доступа (только от gateway)
 // ОТКЛЮЧЕНО для локального тестирования - установи INTERNAL_ALLOWED_IPS для production
@@ -36,8 +43,17 @@ app.use((req, res, next) => {
   return res.status(403).json({ error: "Forbidden" });
 });
 
+// Требуем application/json для POST/PUT/PATCH
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH"].includes(req.method) && !req.is("application/json")) {
+    return res.status(415).json({ error: "Unsupported content-type, expected application/json" });
+  }
+  next();
+});
+
 app.use(express.json({ limit: "1mb" }));
 app.use(metrics.httpMiddleware);
+app.use(routerLimiter);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -99,8 +115,15 @@ app.post("/route", async (req, res) => {
     const route = routeMessage(payload);
 
     if (!route) {
+      logger.sampled(0.05, "info", "No route matched", { issueKey: payload.issue?.key });
       return res.status(200).json({ route: null });
     }
+
+    logger.sampled(0.05, "info", "Route matched", {
+      rule: route.ruleName,
+      chatId: route.chatId,
+      issueKey: payload.issue?.key,
+    });
 
     res.status(200).json({
       route: {

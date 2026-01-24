@@ -54,3 +54,21 @@ groups:
         annotations:
           summary: 'Не отправляются сообщения в Пачку'
           description: 'Notifier получает ошибки от API Пачки (429/5xx). Сообщения не доставляются. Проверь токен, лимиты, доступ к api.pachca.com, логи notifier.'
+
+      - alert: BreakerOpen
+        expr: gateway_circuit_breaker_state == 2 or notifier_circuit_breaker_state == 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Circuit breaker открыт ({{ $labels.target }})'
+          description: 'Сработал circuit breaker для {{ $labels.target }}. Запросы временно блокируются после серии ошибок. Проверь доступность downstream и логи сервиса.'
+
+      - alert: NotifierQueueHigh
+        expr: notifier_queue_length > 200
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Очередь notifier растёт (>200 задач)'
+          description: 'Длина очереди notifier {{ $value }}. Отправки в Пачку не успевают. Проверь сетевые проблемы/лимиты Пачки, увеличь NOTIFIER_CONCURRENCY или разберись с rate limit.'
