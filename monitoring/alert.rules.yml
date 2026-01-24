@@ -1,6 +1,33 @@
 groups:
   - name: pachka-service-alerts
     rules:
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager недоступен >1м"
+          description: "Доставка алертов остановлена. Проверь контейнер alertmanager (порт 9093), логи и сеть."
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus недоступен >1м"
+          description: "Сбор метрик остановлен, правила не сработают. Проверь контейнер prometheus (порт 9090) и volumes."
+
+      - alert: TargetScrapeError
+        expr: up{job="pachka-services"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Таргет {{ $labels.instance }} не скрейпится >1м"
+          description: "Prometheus не видит /metrics {{ $labels.instance }}. Контейнер может быть down или endpoint недоступен."
+
       - alert: ServiceDown
         expr: up{job="pachka-services"} == 0
         for: 1m
