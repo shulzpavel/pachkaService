@@ -78,5 +78,5 @@ export function createMetrics(serviceName) {
     res.end(await register.metrics());
   };
 
-  return { httpMiddleware, recordForward, metricsHandler, register };
+  return { httpMiddleware, recordForward, metricsHandler, register, client };
 }
