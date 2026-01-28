@@ -22,6 +22,16 @@ const NOTIFIER_SERVICE_URL = process.env.NOTIFIER_SERVICE_URL || "http://notifie
 const metrics = createMetrics("gateway");
 const MAX_CONCURRENCY = parseInt(process.env.GATEWAY_CONCURRENCY || "10", 10);
 const MAX_QUEUE = parseInt(process.env.GATEWAY_MAX_QUEUE || "200", 10);
+const inFlightGauge = new metrics.client.Gauge({
+  name: "gateway_in_flight",
+  help: "Current in-flight gateway requests",
+  registers: [metrics.register],
+});
+const maxConcurrencyGauge = new metrics.client.Gauge({
+  name: "gateway_max_concurrency",
+  help: "Gateway max concurrency setting",
+  registers: [metrics.register],
+});
 const queueGauge = new metrics.client.Gauge({
   name: "gateway_queue_length",
   help: "Current gateway queue length",
@@ -50,6 +60,7 @@ const notifierBreaker = new CircuitBreaker("notifier", {
 });
 breakerGauge.set({ target: "router" }, circuitBreakerStateCode.CLOSED);
 breakerGauge.set({ target: "notifier" }, circuitBreakerStateCode.CLOSED);
+maxConcurrencyGauge.set(MAX_CONCURRENCY);
 
 let inFlight = 0;
 const queue = [];
@@ -79,6 +90,7 @@ function processQueue() {
   const job = queue.shift();
   if (!job) return;
   inFlight++;
+  inFlightGauge.set(inFlight);
   job()
     .catch((error) => {
       logger.error("Gateway queue job failed", {
@@ -88,6 +100,7 @@ function processQueue() {
     })
     .finally(() => {
       inFlight--;
+      inFlightGauge.set(inFlight);
       queueGauge.set(queue.length);
       processQueue();
     });

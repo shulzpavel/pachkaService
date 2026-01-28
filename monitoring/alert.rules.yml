@@ -55,6 +55,24 @@ groups:
           summary: '404 на {{ $labels.service }}: {{ $labels.method }} {{ $labels.path }}'
           description: 'За последние 5 минут фиксируются 404 на {{ $labels.service }}. Проверь источник запросов и корректность маршрута. Метки: service={{ $labels.service }}, method={{ $labels.method }}, path={{ $labels.path }}.'
 
+      - alert: High4xxRate
+        expr: (sum by (service) (rate(http_requests_total{status=~"4..",status!~"404"}[5m])) / sum by (service) (rate(http_requests_total[5m]))) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокая доля 4xx на {{ $labels.service }} (>5%)'
+          description: 'Доля 4xx (кроме 404) на {{ $labels.service }} превышает 5% за 5 минут. Проверь валидацию, формат запросов и клиентов.'
+
+      - alert: Webhook400Spike
+        expr: rate(http_requests_total{service="gateway",path="/jira/webhook",status="400"}[5m]) > 0.02
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Всплеск 400 на /jira/webhook'
+          description: 'На gateway растёт число 400 на /jira/webhook. Проверь валидность payload и формат запроса Jira.'
+
       - alert: GatewayHighLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
         for: 1m
@@ -99,6 +117,33 @@ groups:
         annotations:
           summary: 'Circuit breaker открыт ({{ $labels.target }})'
           description: 'Сработал circuit breaker для {{ $labels.target }}. Запросы временно блокируются после серии ошибок. Проверь доступность downstream и логи сервиса.'
+
+      - alert: BreakerHalfOpenTooLong
+        expr: gateway_circuit_breaker_state == 1 or notifier_circuit_breaker_state == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Circuit breaker в HALF_OPEN слишком долго ({{ $labels.target }})'
+          description: 'Circuit breaker остаётся в HALF_OPEN более 2 минут. Возможен флаппинг downstream. Проверь стабильность router/notifier/pachka.'
+
+      - alert: PachkaApiLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(forward_request_duration_seconds_bucket{service="notifier",target="pachka",result="ok"}[5m])) by (le)) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокая задержка Pachka API (p95 > 2s)'
+          description: 'Pachka API отвечает медленно (p95 > 2s). Возможны задержки доставки уведомлений. Проверь сеть и статус api.pachca.com.'
+
+      - alert: GatewayInFlightSaturated
+        expr: gateway_in_flight >= gateway_max_concurrency
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Gateway упёрся в лимит параллелизма'
+          description: 'gateway_in_flight стабильно равен лимиту gateway_max_concurrency. Возможен рост очереди. Проверь нагрузку и настройку GATEWAY_CONCURRENCY.'
 
       - alert: GatewayQueueHigh
         expr: gateway_queue_length > 150
