@@ -8,6 +8,7 @@ import {
   isIPAllowed,
 } from "../../shared/security.js";
 import { validateJiraPayload, logPayloadStructure } from "../../shared/validator.js";
+import { fetchWithTimeout } from "../../shared/fetch-with-timeout.js";
 import { requestWithRetry } from "../../shared/request-with-retry.js";
 import { CircuitBreaker, circuitBreakerStateCode } from "../../shared/circuit-breaker.js";
 import { createMetrics } from "../../shared/metrics.js";
@@ -21,6 +22,16 @@ const NOTIFIER_SERVICE_URL = process.env.NOTIFIER_SERVICE_URL || "http://notifie
 const metrics = createMetrics("gateway");
 const MAX_CONCURRENCY = parseInt(process.env.GATEWAY_CONCURRENCY || "10", 10);
 const MAX_QUEUE = parseInt(process.env.GATEWAY_MAX_QUEUE || "200", 10);
+const queueGauge = new metrics.client.Gauge({
+  name: "gateway_queue_length",
+  help: "Current gateway queue length",
+  registers: [metrics.register],
+});
+const queueOverflowCounter = new metrics.client.Counter({
+  name: "gateway_queue_overflow_total",
+  help: "Gateway queue overflow count",
+  registers: [metrics.register],
+});
 const breakerGauge = new metrics.client.Gauge({
   name: "gateway_circuit_breaker_state",
   help: "Circuit breaker state (0 closed,1 half-open,2 open)",
@@ -47,6 +58,8 @@ const enqueue = (job) =>
     if (queue.length >= MAX_QUEUE) {
       const err = new Error("Gateway queue overflow");
       err.isRetryable = true;
+      queueOverflowCounter.inc();
+      queueGauge.set(queue.length);
       return reject(err);
     }
     queue.push(async () => {
@@ -57,6 +70,7 @@ const enqueue = (job) =>
         reject(e);
       }
     });
+    queueGauge.set(queue.length);
     processQueue();
   });
 
@@ -66,9 +80,15 @@ function processQueue() {
   if (!job) return;
   inFlight++;
   job()
-    .catch(() => {})
+    .catch((error) => {
+      logger.error("Gateway queue job failed", {
+        error: error.message,
+        stack: error.stack,
+      });
+    })
     .finally(() => {
       inFlight--;
+      queueGauge.set(queue.length);
       processQueue();
     });
 }
@@ -474,4 +494,17 @@ app.listen(PORT, () => {
   logger.info(`Gateway service started on port ${PORT}`);
   logger.info(`Router service URL: ${ROUTER_SERVICE_URL}`);
   logger.info(`Notifier service URL: ${NOTIFIER_SERVICE_URL}`);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection", {
+    reason: reason?.message || String(reason),
+    stack: reason?.stack,
+  });
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception", { error: error.message, stack: error.stack });
+  process.exit(1);
 });

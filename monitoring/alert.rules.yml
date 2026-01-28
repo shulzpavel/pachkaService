@@ -100,6 +100,24 @@ groups:
           summary: 'Circuit breaker открыт ({{ $labels.target }})'
           description: 'Сработал circuit breaker для {{ $labels.target }}. Запросы временно блокируются после серии ошибок. Проверь доступность downstream и логи сервиса.'
 
+      - alert: GatewayQueueHigh
+        expr: gateway_queue_length > 150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Очередь gateway растёт (>150 задач)'
+          description: 'Длина очереди gateway {{ $value }}. Вебхуки могут тормозить. Проверь нагрузку, лимиты и downstream (router/notifier).'
+
+      - alert: GatewayQueueOverflow
+        expr: increase(gateway_queue_overflow_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Переполнение очереди gateway'
+          description: 'За последние 5 минут зафиксированы отказы из-за переполнения очереди gateway. Проверь нагрузку и параметры GATEWAY_CONCURRENCY/GATEWAY_MAX_QUEUE.'
+
       - alert: NotifierQueueHigh
         expr: notifier_queue_length > 200
         for: 2m

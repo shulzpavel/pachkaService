@@ -149,3 +149,16 @@ try {
 app.listen(PORT, () => {
   logger.info(`Router service started on port ${PORT}`);
 });
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection", {
+    reason: reason?.message || String(reason),
+    stack: reason?.stack,
+  });
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception", { error: error.message, stack: error.stack });
+  process.exit(1);
+});

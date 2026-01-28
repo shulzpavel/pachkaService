@@ -47,7 +47,12 @@ const processQueue = () => {
   if (!job) return;
   inFlight++;
   job()
-    .catch(() => {})
+    .catch((error) => {
+      logger.error("Notifier queue job failed", {
+        error: error.message,
+        stack: error.stack,
+      });
+    })
     .finally(() => {
       inFlight--;
       if (queueGauge) queueGauge.set(queue.length);
@@ -191,4 +196,17 @@ app.post("/alert", async (req, res) => {
 
 app.listen(PORT, () => {
   logger.info(`Notifier service started on port ${PORT}`);
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection", {
+    reason: reason?.message || String(reason),
+    stack: reason?.stack,
+  });
+  process.exit(1);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception", { error: error.message, stack: error.stack });
+  process.exit(1);
 });
