@@ -97,7 +97,7 @@ export function validateRoutesSchema(config) {
     }
 
     // Проверка template
-    if (!rule.template) {
+    if (rule.template === undefined || rule.template === null) {
       errors.push(`${rulePrefix}: missing required field 'template'`);
     } else if (typeof rule.template !== "string") {
       errors.push(`${rulePrefix}: 'template' must be a string (got ${typeof rule.template})`);

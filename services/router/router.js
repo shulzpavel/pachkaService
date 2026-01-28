@@ -18,7 +18,8 @@ function loadRoutes(forceReload = false) {
   
   routesConfig = null; // Сбрасываем кэш
 
-  const configPath = path.join(__dirname, "../../routes.json");
+  const configPath =
+    process.env.ROUTES_CONFIG_PATH || path.join(__dirname, "../../routes.json");
   try {
     // Проверка существования файла
     if (!fs.existsSync(configPath)) {

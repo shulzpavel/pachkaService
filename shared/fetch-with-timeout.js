@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import nodeFetch from "node-fetch";
 
 /**
  * Fetch с реальным timeout через AbortController
@@ -10,9 +10,10 @@ import fetch from "node-fetch";
 export async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const fetchImpl = globalThis.fetch || nodeFetch;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       ...options,
       signal: controller.signal,
     });

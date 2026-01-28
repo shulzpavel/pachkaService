@@ -1,21 +1,25 @@
-import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
+import { describe, test, expect, beforeAll } from "@jest/globals";
 import request from "supertest";
-import express from "express";
+import http from "http";
 
 // Моки для тестирования gateway
 const createMockGateway = () => {
-  const app = express();
-  app.use(express.json());
+  return http.createServer((req, res) => {
+    if (req.method === "GET" && req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", service: "gateway" }));
+      return;
+    }
 
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok", service: "gateway" });
+    if (req.method === "POST" && req.url === "/jira/webhook") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+
+    res.statusCode = 404;
+    res.end();
   });
-
-  app.post("/jira/webhook", (req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  return app;
 };
 
 describe("Gateway Service Integration", () => {

@@ -1,5 +1,5 @@
-import { describe, test, expect } from "@jest/globals";
-import { routeMessage } from "../../../services/router/router.js";
+import { describe, test, expect, beforeEach, afterEach } from "@jest/globals";
+import { routeMessage, reloadRoutes } from "../../services/router/router.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,17 +7,28 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Создаем временный routes.json для тестов
-const createTestRoutes = (rules) => {
-  const testRoutesPath = path.join(__dirname, "../../routes.test.json");
+let testRoutesPath;
+
+const writeTestRoutes = (rules) => {
+  testRoutesPath = path.join(__dirname, "../../routes.test.json");
   fs.writeFileSync(
     testRoutesPath,
     JSON.stringify({ rules, defaultChatId: null }, null, 2)
   );
-  return testRoutesPath;
+  process.env.ROUTES_CONFIG_PATH = testRoutesPath;
+  reloadRoutes();
 };
 
 describe("Router Service Integration", () => {
+  afterEach(() => {
+    if (testRoutesPath && fs.existsSync(testRoutesPath)) {
+      fs.unlinkSync(testRoutesPath);
+    }
+    testRoutesPath = null;
+    delete process.env.ROUTES_CONFIG_PATH;
+    reloadRoutes();
+  });
+
   test("should route by projectKey", () => {
     const rules = [
       {
@@ -27,6 +38,7 @@ describe("Router Service Integration", () => {
         template: "Issue: {issue.key}",
       },
     ];
+    writeTestRoutes(rules);
 
     const payload = {
       issue: {
@@ -38,13 +50,22 @@ describe("Router Service Integration", () => {
       },
     };
 
-    // Мокаем загрузку конфигурации
     const result = routeMessage(payload);
-    // Тест будет работать только если routes.json существует и валиден
-    // В реальном тесте нужно мокировать loadRoutes
+    expect(result).toBeTruthy();
+    expect(result.chatId).toBe("123");
   });
 
   test("should route by automationName", () => {
+    const rules = [
+      {
+        name: "Automation Rule",
+        conditions: { automationName: "My Automation" },
+        chatId: "999",
+        template: "Automation: {automationName}",
+      },
+    ];
+    writeTestRoutes(rules);
+
     const payload = {
       automationName: "My Automation",
       issue: {
@@ -55,6 +76,8 @@ describe("Router Service Integration", () => {
       },
     };
 
-    // Аналогично - нужен мок
+    const result = routeMessage(payload);
+    expect(result).toBeTruthy();
+    expect(result.chatId).toBe("999");
   });
 });

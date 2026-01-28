@@ -46,6 +46,15 @@ groups:
           summary: 'Ошибки 5xx на gateway >5% за 5м'
           description: 'Gateway отдаёт >5% 5xx за последние 5 минут. Вебхуки Jira могут не доходить. Проверь логи gateway и доступность router/notifier, внешние API.'
 
+      - alert: Http404Detected
+        expr: rate(http_requests_total{status="404"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: '404 на {{ $labels.service }}: {{ $labels.method }} {{ $labels.path }}'
+          description: 'За последние 5 минут фиксируются 404 на {{ $labels.service }}. Проверь источник запросов и корректность маршрута. Метки: service={{ $labels.service }}, method={{ $labels.method }}, path={{ $labels.path }}.'
+
       - alert: GatewayHighLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="gateway"}[5m])) by (le)) > 1
         for: 1m

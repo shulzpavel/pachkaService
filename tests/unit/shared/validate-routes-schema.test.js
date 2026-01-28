@@ -29,7 +29,7 @@ describe("Routes Schema Validator", () => {
     const config = { rules: [] };
     const result = validateRoutesSchema(config);
     expect(result.valid).toBe(false);
-    expect(result.details).toContain("empty");
+    expect(result.details.some((detail) => detail.includes("empty"))).toBe(true);
   });
 
   test("should reject rule without name", () => {

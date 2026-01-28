@@ -15,7 +15,7 @@
 ## Ключевые файлы
 
 - `monitoring/prometheus.yml` — таргеты, правила, alertmanagers.
-- `monitoring/alert.rules.yml` — алерты (ServiceDown, Gateway 5xx/latency, Router/Notifier forward errors, Pachka send errors).
+- `monitoring/alert.rules.yml` — алерты (ServiceDown, 5xx/latency, Http404Detected, Router/Notifier forward errors, Pachka send errors).
 - `monitoring/alertmanager.yml` — доставка в notifier (webhook `http://notifier:3002/alert`), параметры группировки/повторов.
 - `services/notifier/index.js` — приём `/alert`, форматирование сообщений, отправка в чат.
 
@@ -41,7 +41,7 @@
 - Rate-limit: gateway (IP + глобальный), router (200 rps/min), Content-Type guard обязательный.
 - Метрики forward включают `result=ok|error`, buckets до 30s; Gauge `notifier_queue_length`.
 - Лог-сэмплинг: шумные события пишем через `logger.sampled()`.
-- Новые алерты: BreakerOpen (если breaker открыт) и NotifierQueueHigh (>200 в очереди).
+- Новые алерты: BreakerOpen (если breaker открыт), NotifierQueueHigh (>200 в очереди), Http404Detected (любой 404 с указанием service/method/path).
 
 ## Формат сообщений в Пачке
 

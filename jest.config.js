@@ -1,10 +1,10 @@
 export default {
   testEnvironment: "node",
   transform: {},
-  moduleNameMapper: {
-    "^(\\.{1,2}/.*)\\.js$": "$1",
+  haste: {
+    throwOnModuleCollision: false,
   },
-  testMatch: ["**/__tests__/**/*.test.js"],
+  testMatch: ["**/__tests__/**/*.test.js", "**/tests/**/*.test.js"],
   collectCoverageFrom: [
     "services/**/*.js",
     "shared/**/*.js",

@@ -12,15 +12,10 @@ import { describe, test, expect, beforeAll } from "@jest/globals";
 
 describe("Full Flow Integration Test", () => {
   const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:3000";
+  const shouldRun = process.env.RUN_INTEGRATION_TESTS === "true";
+  const integrationTest = shouldRun ? test : test.skip;
 
-  beforeAll(() => {
-    // Пропускаем тесты если сервисы не запущены
-    if (process.env.SKIP_INTEGRATION_TESTS === "true") {
-      console.log("⚠️  Skipping integration tests - set SKIP_INTEGRATION_TESTS=false to run");
-    }
-  });
-
-  test("should process webhook end-to-end", async () => {
+  integrationTest("should process webhook end-to-end", async () => {
     const payload = {
       webhookEvent: "jira:issue_created",
       automationName: "Test Automation",
@@ -38,12 +33,6 @@ describe("Full Flow Integration Test", () => {
       },
     };
 
-    // Этот тест требует запущенных сервисов
-    if (process.env.SKIP_INTEGRATION_TESTS === "true") {
-      console.log("Skipping integration test - services not available");
-      return;
-    }
-
     const response = await fetch(`${GATEWAY_URL}/jira/webhook`, {
       method: "POST",
       headers: {
@@ -57,7 +46,7 @@ describe("Full Flow Integration Test", () => {
     expect([200, 503]).toContain(response.status);
   });
 
-  test("should validate payload and reject invalid", async () => {
+  integrationTest("should validate payload and reject invalid", async () => {
     const invalidPayload = {
       webhookEvent: "jira:issue_created",
       // Нет issue и automationName

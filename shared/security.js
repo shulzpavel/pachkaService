@@ -17,12 +17,14 @@ export function verifyJiraWebhookSignature(payload, signature, secret) {
     const hmac = crypto.createHmac("sha256", secret);
     hmac.update(payload);
     const expectedSignature = hmac.digest("hex");
+    const providedBuffer = Buffer.from(signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    if (providedBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
     
     // Сравниваем с постоянным временем для защиты от timing attacks
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expectedSignature, "hex")
-    );
+    return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
   } catch (error) {
     logger.error("Error verifying webhook signature", { error: error.message });
     return false;
@@ -41,9 +43,14 @@ export function verifyApiKey(providedKey, expectedKey) {
   }
   
   // Сравниваем с постоянным временем
+  const providedBuffer = Buffer.from(providedKey);
+  const expectedBuffer = Buffer.from(expectedKey);
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
   return crypto.timingSafeEqual(
-    Buffer.from(providedKey),
-    Buffer.from(expectedKey)
+    providedBuffer,
+    expectedBuffer
   );
 }
 
