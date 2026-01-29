@@ -7,8 +7,22 @@ export function formatDate(iso) {
   if (!iso) return "-";
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime()) || d.getFullYear() < 1970) return "-";
-  const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
-  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  try {
+    const parts = new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(d);
+    const get = (type) => parts.find((p) => p.type === type)?.value || "00";
+    return `${get("day")}.${get("month")}.${get("year")} ${get("hour")}:${get("minute")}`;
+  } catch {
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
+    return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${String(d.getUTCFullYear()).slice(-2)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  }
 }
 
 /**

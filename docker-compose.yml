@@ -115,7 +115,7 @@ services:
     image: grafana/grafana:10.4.2
     container_name: jira-pachka-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     ports:
       - "3003:3000"
     volumes:

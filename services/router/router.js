@@ -266,7 +266,7 @@ function matchesRule(rule, payload) {
     const boardId =
       payload.board?.id ||
       payload.issue?.fields?.board?.id ||
-      payload.changelog?.items?.find((item) => item.field === "board")?.toString ||
+    payload.changelog?.items?.find((item) => item.field === "board")?.toString?.() ||
       payload.issue?.fields?.customfield_10020?.[0]?.boardId;
     
     if (!boardId || String(boardId) !== String(conditions.boardId)) {

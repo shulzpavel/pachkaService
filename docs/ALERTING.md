@@ -41,7 +41,7 @@
 - Rate-limit: gateway (IP + глобальный), router (200 rps/min), Content-Type guard обязательный.
 - Метрики forward включают `result=ok|error`, buckets до 30s; Gauge `notifier_queue_length`.
 - Лог-сэмплинг: шумные события пишем через `logger.sampled()`.
-- Новые алерты: BreakerOpen/BreakerHalfOpenTooLong, GatewayQueueHigh/GatewayQueueOverflow/GatewayInFlightSaturated, NotifierQueueHigh (>200 в очереди), Http404Detected, High4xxRate, Webhook400Spike, PachkaApiLatencyP95.
+- Новые алерты: BreakerOpen/BreakerHalfOpenTooLong, GatewayQueueHigh/GatewayQueueOverflow/GatewayInFlightSaturated, NotifierQueueHigh (>200 в очереди), Http404Detected (только /jira/webhook), High4xxRate, Webhook400Spike, PachkaApiLatencyP95.
 
 ## Формат сообщений в Пачке
 

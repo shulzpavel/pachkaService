@@ -28,3 +28,7 @@ Thumbs.db
 
 # Misc
 *.pid
+
+# Tests (ignored going forward)
+tests/
+**/__tests__/

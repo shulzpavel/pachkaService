@@ -19,15 +19,6 @@ groups:
           summary: "Prometheus недоступен >1м"
           description: "Сбор метрик остановлен, правила не сработают. Проверь контейнер prometheus (порт 9090) и volumes."
 
-      - alert: TargetScrapeError
-        expr: up{job="pachka-services"} == 0
-        for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Таргет {{ $labels.instance }} не скрейпится >1м"
-          description: "Prometheus не видит /metrics {{ $labels.instance }}. Контейнер может быть down или endpoint недоступен."
-
       - alert: ServiceDown
         expr: up{job="pachka-services"} == 0
         for: 1m
@@ -47,13 +38,13 @@ groups:
           description: 'Gateway отдаёт >5% 5xx за последние 5 минут. Вебхуки Jira могут не доходить. Проверь логи gateway и доступность router/notifier, внешние API.'
 
       - alert: Http404Detected
-        expr: rate(http_requests_total{status="404"}[5m]) > 0
+        expr: rate(http_requests_total{status="404",path="/jira/webhook"}[5m]) > 0
         for: 1m
         labels:
           severity: warning
         annotations:
-          summary: '404 на {{ $labels.service }}: {{ $labels.method }} {{ $labels.path }}'
-          description: 'За последние 5 минут фиксируются 404 на {{ $labels.service }}. Проверь источник запросов и корректность маршрута. Метки: service={{ $labels.service }}, method={{ $labels.method }}, path={{ $labels.path }}.'
+          summary: '404 на webhook: {{ $labels.method }} {{ $labels.path }}'
+          description: 'За последние 5 минут фиксируются 404 на /jira/webhook. Проверь конфигурацию Jira webhook и маршруты. Метки: service={{ $labels.service }}, method={{ $labels.method }}, path={{ $labels.path }}.'
 
       - alert: High4xxRate
         expr: (sum by (service) (rate(http_requests_total{status=~"4..",status!~"404"}[5m])) / sum by (service) (rate(http_requests_total[5m]))) > 0.05

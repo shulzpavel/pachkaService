@@ -12,8 +12,9 @@ describe("alert.rules.yml", () => {
 
     expect(content).toContain("alert: Http404Detected");
     expect(content).toContain('status="404"');
+    expect(content).toContain('path="/jira/webhook"');
     expect(content).toContain(
-      "summary: '404 на {{ $labels.service }}: {{ $labels.method }} {{ $labels.path }}'"
+      "summary: '404 на webhook: {{ $labels.method }} {{ $labels.path }}'"
     );
     expect(content).toContain(
       "service={{ $labels.service }}, method={{ $labels.method }}, path={{ $labels.path }}"

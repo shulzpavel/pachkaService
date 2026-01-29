@@ -369,6 +369,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
     }
 
     // Форвардим в Notifier Service с реальным timeout
+    const notifierStart = Date.now();
     const notifierResponse = await enqueue(() =>
       notifierBreaker.exec(() =>
         requestWithRetry(
@@ -392,7 +393,7 @@ app.post("/jira/webhook", webhookLimiter, async (req, res) => {
         )
       )
     );
-    metrics.recordForward("notifier", notifierResponse.status, (Date.now() - routerStart) / 1000, "ok");
+    metrics.recordForward("notifier", notifierResponse.status, (Date.now() - notifierStart) / 1000, "ok");
 
     if (!notifierResponse.ok) {
       const errorText = await notifierResponse.text();
