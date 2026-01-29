@@ -61,6 +61,102 @@
           "legendFormat": "queue"
         }
       ]
+    },
+    {
+      "type": "stat",
+      "title": "Queue size (gateway)",
+      "gridPos": { "x": 18, "y": 12, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "gateway_queue_length",
+          "legendFormat": "queue"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "4xx rate by service (excl 404)",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum by (service) (rate(http_requests_total{status=~\"4..\",status!~\"404\"}[5m])) / sum by (service) (rate(http_requests_total[5m]))",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Webhook 400 rate",
+      "gridPos": { "x": 12, "y": 18, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{service=\"gateway\",path=\"/jira/webhook\",status=\"400\"}[5m])",
+          "legendFormat": "400"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Webhook 404 rate",
+      "gridPos": { "x": 18, "y": 18, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{path=\"/jira/webhook\",status=\"404\"}[5m])",
+          "legendFormat": "404"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Circuit breaker state",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "gateway_circuit_breaker_state",
+          "legendFormat": "gateway {{target}}"
+        },
+        {
+          "expr": "notifier_circuit_breaker_state",
+          "legendFormat": "notifier {{target}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Pachka API latency p95",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(forward_request_duration_seconds_bucket{service=\"notifier\",target=\"pachka\",result=\"ok\"}[5m])) by (le))",
+          "legendFormat": "pachka"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Gateway in-flight vs max",
+      "gridPos": { "x": 0, "y": 30, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "gateway_in_flight",
+          "legendFormat": "in_flight"
+        },
+        {
+          "expr": "gateway_max_concurrency",
+          "legendFormat": "max"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Gateway queue overflow (5m)",
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "increase(gateway_queue_overflow_total[5m])",
+          "legendFormat": "overflow"
+        }
+      ]
     }
   ]
 }
