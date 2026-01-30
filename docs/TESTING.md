@@ -32,6 +32,7 @@ npm run test:integration
 **Требования:**
 - Запущенные сервисы (или моки)
 - Валидный `routes.json`
+- `RUN_INTEGRATION_TESTS=true`
 
 ### 3. Нагрузочные тесты
 
@@ -110,15 +111,15 @@ LOAD_TEST_PIPELINING=2      # уровень pipelining
 # Endurance test
 ENDURANCE_DURATION=300       # секунды
 
-# Пропустить integration тесты если сервисы не запущены
-SKIP_INTEGRATION_TESTS=true
+# Включить integration тесты (по умолчанию пропущены)
+RUN_INTEGRATION_TESTS=true
 ```
 
 ## Запуск тестов перед деплоем
 
 ```bash
 # 1. Запустить сервисы
-docker-compose up -d
+docker compose up -d
 
 # 2. Подождать запуска
 sleep 10
@@ -161,7 +162,7 @@ npm run test:load
 # Пример для GitHub Actions
 - name: Run tests
   run: |
-    docker-compose up -d
+    docker compose up -d
     sleep 10
     npm run test:all
 ```
@@ -175,22 +176,22 @@ npm run test:load
 npm install
 
 # Проверь что сервисы запущены
-docker-compose ps
+docker compose ps
 curl http://localhost:3000/health
 ```
 
 ### Load test показывает высокий error rate
 
 1. Проверь что все сервисы запущены
-2. Проверь логи: `docker-compose logs`
+2. Проверь логи: `docker compose logs`
 3. Уменьши количество connections
 4. Проверь ресурсы сервера (CPU, память)
 
 ### Integration тесты падают
 
 ```bash
-# Пропусти их если сервисы не запущены
-SKIP_INTEGRATION_TESTS=true npm run test:integration
+# Включи их, если сервисы запущены
+RUN_INTEGRATION_TESTS=true npm run test:integration
 ```
 
 ## Метрики производительности

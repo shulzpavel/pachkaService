@@ -62,22 +62,25 @@ ADMIN_API_KEY=your_admin_key  # Для /reload endpoint
 ### 1. Установка зависимостей
 
 ```bash
-# Убедись что Docker и Docker Compose установлены
+# Убедись что Docker и Docker Compose v2 установлены
 docker --version
-docker-compose --version
+docker compose version
 ```
+
+> Примечание: проект использует Docker Compose v2 формат (без поля `version:`).
+> Команда — `docker compose` (без дефиса).
 
 ### 2. Запуск
 
 ```bash
 # Запуск всех сервисов
-docker-compose up -d
+docker compose up -d
 
 # Просмотр логов
-docker-compose logs -f
+docker compose logs -f
 
 # Проверка статуса
-docker-compose ps
+docker compose ps
 ```
 
 ### 3. Проверка работоспособности
@@ -166,12 +169,12 @@ hostname -I
 
 ```bash
 # Все сервисы
-docker-compose logs -f
+docker compose logs -f
 
 # Конкретный сервис
-docker-compose logs -f gateway
-docker-compose logs -f router
-docker-compose logs -f notifier
+docker compose logs -f gateway
+docker compose logs -f router
+docker compose logs -f notifier
 ```
 
 ### Health checks
@@ -192,12 +195,14 @@ curl http://localhost:3000/health/services
 # 1. Отредактируй routes.json
 nano routes.json
 
-# 2. Перезагрузи конфигурацию роутера
+# 2. Перезагрузи конфигурацию роутера (internal endpoint)
 curl -X POST http://localhost:3001/reload \
   -H "X-Admin-API-Key: your_admin_key"
 
+В production `ADMIN_API_KEY` обязателен, иначе endpoint может быть недоступен.
+
 # Или перезапусти роутер
-docker-compose restart router
+docker compose restart router
 ```
 
 ### Обновление кода
@@ -207,7 +212,7 @@ docker-compose restart router
 git pull
 
 # 2. Пересобери и перезапусти
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ## Troubleshooting
@@ -216,7 +221,7 @@ docker-compose up -d --build
 
 ```bash
 # Проверь логи
-docker-compose logs
+docker compose logs
 
 # Проверь .env файл
 cat .env
@@ -229,14 +234,14 @@ netstat -tuln | grep 3000
 
 1. Проверь токен Pachka в `.env`
 2. Убедись что бот добавлен в чаты
-3. Проверь логи notifier: `docker-compose logs notifier`
+3. Проверь логи notifier: `docker compose logs notifier`
 4. Проверь что `routes.json` правильный
 
 ### Webhook не приходит
 
 1. Проверь что Gateway доступен извне
 2. Проверь firewall/iptables
-3. Проверь логи gateway: `docker-compose logs gateway`
+3. Проверь логи gateway: `docker compose logs gateway`
 4. Проверь IP allowlist (если включен)
 
 ## Важно

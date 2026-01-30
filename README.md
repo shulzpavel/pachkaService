@@ -19,10 +19,10 @@ cp env.example .env
 # Отредактируй .env, заполни все переменные
 
 # 2. Запуск всех микросервисов
-docker-compose up -d
+docker compose up -d
 
 # 3. Просмотр логов
-docker-compose logs -f
+docker compose logs -f
 
 # 4. Проверка
 curl http://localhost:3000/health
@@ -100,6 +100,12 @@ curl http://localhost:3000/health
 
 - [DEPLOY.md](./docs/DEPLOY.md) — Инструкция по деплою на сервер
 - [MICROSERVICES.md](./docs/MICROSERVICES.md) — Архитектура микросервисов
+- [overview.md](./docs/overview.md) — Обзор мониторинга и алертинга
+- [prometheus.md](./docs/prometheus.md) — Конфиг Prometheus и правила
+- [alertmanager.md](./docs/alertmanager.md) — Маршрутизация алертов
+- [notifier.md](./docs/notifier.md) — Обработка алертов
+- [grafana.md](./docs/grafana.md) — Дашборды и provisioning
+- [runbooks.md](./docs/runbooks.md) — Типовые инциденты
 - [JIRA_SETUP.md](./docs/JIRA_SETUP.md) — Настройка автоматизации в Jira
 - [TEMPLATE_VARIABLES.md](./docs/TEMPLATE_VARIABLES.md) — Переменные для шаблонов
 - [PRODUCTION_CHECKLIST.md](./docs/PRODUCTION_CHECKLIST.md) — Чеклист перед деплоем
@@ -132,7 +138,7 @@ npm run test:load
 ## 📞 Поддержка
 
 При проблемах проверь:
-1. Логи: `docker-compose logs -f`
+1. Логи: `docker compose logs -f`
 2. Health checks: `curl http://localhost:3000/health/services`
 3. Конфигурацию: `.env` и `routes.json`
 4. Бот добавлен в чаты в Pachka

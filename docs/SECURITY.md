@@ -105,7 +105,7 @@ JIRA_ALLOWED_IPS=192.168.1.1,10.0.0.0/8
 
 1. Создай новый токен в Пачке
 2. Обнови `.env` на сервере
-3. Перезапусти сервис: `docker-compose restart notifier`
+3. Перезапусти сервис: `docker compose restart notifier`
 4. Удали старый токен
 
 ### Удаление токена из Git истории
@@ -144,13 +144,13 @@ curl -X POST http://your-server:3000/jira/webhook \
   -d '{"test":true}'
 ```
 
-### Тест /reload
+### Тест /reload (Router)
 
 ```bash
 # Без ключа (должен вернуть 401 или 404 в production)
-curl -X POST http://your-server:3000/reload
+curl -X POST http://your-server:3001/reload
 
 # С правильным ключом
-curl -X POST http://your-server:3000/reload \
+curl -X POST http://your-server:3001/reload \
   -H "X-Admin-API-Key: your_admin_key"
 ```

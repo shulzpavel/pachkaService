@@ -112,9 +112,9 @@ curl http://your-server:3000/health
 
 ```bash
 # Docker Compose
-docker-compose logs -f gateway
-docker-compose logs -f router
-docker-compose logs -f notifier
+docker compose logs -f gateway
+docker compose logs -f router
+docker compose logs -f notifier
 ```
 
 ### 3. Проверь Пачку
@@ -127,7 +127,7 @@ docker-compose logs -f notifier
 
 1. Проверь что URL правильный
 2. Проверь что сервис доступен из интернета
-3. Проверь логи gateway: `docker-compose logs gateway`
+3. Проверь логи gateway: `docker compose logs gateway`
 4. Проверь что нет ошибок в Jira Automation
 
 ### Webhook приходит, но сообщение не отправляется в Пачку
@@ -135,10 +135,10 @@ docker-compose logs -f notifier
 1. Проверь токен в `.env`: `grep PACHKA_TOKEN .env`
 2. Проверь что бот добавлен в чат в Пачке
 3. Проверь chat_id в `routes.json`
-4. Проверь логи notifier: `docker-compose logs notifier`
+4. Проверь логи notifier: `docker compose logs notifier`
 
 ### "No route matched"
 
 1. Проверь `routes.json` - должно быть правило для твоего `projectKey` или `automationName`
 2. Проверь что payload содержит нужные поля
-3. Проверь логи router: `docker-compose logs router`
+3. Проверь логи router: `docker compose logs router`
